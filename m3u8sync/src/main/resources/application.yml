@@ -1,0 +1,8 @@
+server:
+  port: 9290
+
+spring:
+  application:
+    name: m3u8Sync
+  profiles:
+    active: test

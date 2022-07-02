@@ -1,0 +1,13 @@
+server:
+  port: 9291
+
+spring:
+  application:
+    name: m3u8Sync call demo
+  profiles:
+    active: dev
+
+m3u8async:
+  apiUrl: http://localhost:9290/
+  callbackUrl: http://localhost:9291/
+  callParamUrl: m3u8Sync/callback/{roomId}

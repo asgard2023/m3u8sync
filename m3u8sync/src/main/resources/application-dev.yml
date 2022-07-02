@@ -1,0 +1,55 @@
+#下载并上传的任务控制
+downup:
+  #是否开启下载上传任务
+  open: true
+  #同时下载的并发线程数
+  task-nums: 2
+  #每个任务并发线程数
+  task-thread-count: 5
+  #最大下载线程数
+  thread-max: 50
+  #最大允许重复任务的执行间隔,单位小时
+  time-interval: 24
+  #可下载的nginx服务地址
+  nginx-url: http://localhost/m3u8/live/
+  #下载目录
+  down-path: /data/down/
+  #过期时间，任务从开始到过期48小时，如果48小时且多次重试都失败的，就放弃
+  expire-hour: 48
+
+callback:
+  baseUrl: http://localhost:9291
+  paramUrl: m3u8Sync/callback/{roomId}
+  open: true
+
+
+# /info端点信息配置
+info:
+  app:
+    name: Nginx m3u8 sync
+    version: 0.1
+
+spring:
+  redis:
+    host: localhost
+    database: 0
+    password:
+    port: 6379
+    timeout: 2000
+    jedis:
+      pool:
+        min-idle: 5
+        max-idle: 10
+        max-wait: 1000ms
+        maxWaitMillis: 10000 # 获取连接最大等待时间
+        testOnBorrow: true # 获取连接时检测是否可用
+        max-active: 100
+
+logging:
+  level:
+    root: INFO
+    org:
+      ccs:
+        m3u8sync: DEBUG'
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(-){faint} %clr([%14.14t]){faint} %clr(%-40.40logger.%13.13M){cyan} %clr(%3.3L) %clr(:){faint} %msg%n${LOG_EXCEPTION_CONVERSION_WORD:-%wEx}"
