@@ -35,13 +35,13 @@ java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
 
 
 ###/downup/one异常修复，之前有失败才能使用
-curl "http://localhost:8080/downup/one?roomId=xxxx"
+curl "http://localhost:9290/downup/one?roomId=xxxx"
 ###/downup/recover手动批量异常恢复上传，每小时整点会自动执行这个
-curl "http://localhost:8080/downup/recover"
+curl "http://localhost:9290/downup/recover"
 - 无参数
 - 会把下载失败次数超过5次的m3u8的异常下载任务从异常队列移回下载队列，以便于继续下载。
 ###/downup/status上传进度查询
-curl "http://localhost:8080/downup/status?type=help"
+curl "http://localhost:9290/downup/status?type=help"
 
 ##功能特性
 * 基于nginx下载的m3u8同步服务，可用于跨地域同步，网络差的情况。
