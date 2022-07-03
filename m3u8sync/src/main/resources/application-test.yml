@@ -3,7 +3,7 @@ downup:
   #是否开启下载上传任务
   open: true
   #同时下载的并发线程数
-  task-nums: 2
+  task-num: 2
   #每个任务并发线程数
   task-thread-count: 5
   #最大下载线程数

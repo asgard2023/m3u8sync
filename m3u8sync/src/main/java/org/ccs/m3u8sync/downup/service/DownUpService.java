@@ -118,6 +118,7 @@ public class DownUpService {
      */
     private void doTask() {
         Integer taskNum = downUpConfig.getTaskNum();
+        log.info("----doTask--taskNum={}", taskNum);
         for (int i = 0; i < taskNum; i++) {
             ThreadUtil.execute(() -> {
                 //线程优先休眠,让容器启动完毕
