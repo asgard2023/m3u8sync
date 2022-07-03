@@ -12,7 +12,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestTemplate;
 
 @Service
@@ -32,10 +31,10 @@ public class M3u8SyncClient {
     }
 
 
-    public String addSync(@RequestParam("roomId") String roomId, @RequestParam("format") String format, @RequestParam("url") String url, CallbackVo callback) {
+    public String addSync(String roomId, String format, String m3u8Url, CallbackVo callback) {
         HttpHeaders requestHeaders = initPostHeader();
         String apiUrl = CommUtils.appendUrl(m3u8AsyncDemoConfiguration.getApiUrl(), "downup/add");
-        apiUrl = apiUrl + "?roomId=" + roomId+"&url="+url+"&format="+format;
+        apiUrl = apiUrl + "?roomId=" + roomId + "&m3u8Url=" + m3u8Url + "&format=" + format;
 
         String bodyString = JSONUtil.toJsonStr(callback);
         log.info("----addSync--roomId={}, bodyString={}", roomId, bodyString);
@@ -47,10 +46,10 @@ public class M3u8SyncClient {
         return resultRemote;
     }
 
-    public M3u8FileInfoVo getM3u8Info(@RequestParam("roomId") String roomId) {
+    public M3u8FileInfoVo getM3u8Info(String roomId, String format) {
         HttpHeaders requestHeaders = initPostHeader();
         String url = CommUtils.appendUrl(m3u8AsyncDemoConfiguration.getApiUrl(), "m3u8/m3u8Info");
-        url = url + "?roomId=" + roomId;
+        url = url + "?roomId=" + roomId + "&format=" + format;
 
 
         log.info("----getM3u8Info--roomId={}", roomId);

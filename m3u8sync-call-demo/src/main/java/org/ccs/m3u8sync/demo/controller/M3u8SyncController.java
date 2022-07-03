@@ -38,7 +38,8 @@ public class M3u8SyncController {
     }
 
     @GetMapping("m3u8Info")
-    public Object getM3u8Info(@RequestParam(name = "roomId") String roomId) {
-        return m3u8SyncClient.getM3u8Info(roomId);
+    public Object getM3u8Info(@RequestParam(name = "roomId") String roomId
+            , @RequestParam(value = "format", required = false) String format) {
+        return m3u8SyncClient.getM3u8Info(roomId, format);
     }
 }

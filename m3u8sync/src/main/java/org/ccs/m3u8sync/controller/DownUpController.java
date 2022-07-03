@@ -45,16 +45,16 @@ public class DownUpController {
     @PostMapping("add")
     public ResultData add(@RequestParam("roomId") String roomId
             , @RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
-            , @RequestParam(value = "url", required = false) String url
+            , @RequestParam(value = "m3u8Url", required = false) String m3u8Url
             , CallbackVo callback) {
         log.info("----add--roomId={} format={}", roomId, format);
         if (CharSequenceUtil.isBlank(roomId)) {
             return ResultData.error("roomId不能为空");
         }
-        if (StringUtils.isBlank(url)) {
-            url = downUpConfig.getNginxUrl(roomId, format);
+        if (StringUtils.isBlank(m3u8Url)) {
+            m3u8Url = downUpConfig.getNginxUrl(roomId, format);
         }
-        DownBean bean = new DownBean(roomId, url, roomId, new Date(), callback, 0, 0, null, 0);
+        DownBean bean = new DownBean(roomId, m3u8Url, roomId, new Date(), callback, 0, 0, null, 0);
         downUpService.addTask(roomId, bean);
         return ResultData.success();
     }
