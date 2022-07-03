@@ -17,6 +17,7 @@ public class DownUpConfig {
     private Integer taskThreadCount = 5;
     private Integer threadMax = 50;
     private boolean open = true;
+    private String format= "{roomId}/{roomId}.m3u8";
     /**
      * 过期时间，单位小时
      */
@@ -25,8 +26,9 @@ public class DownUpConfig {
     private String nginxUrl;
     private String downPath = "/data/down/";
 
-    public String getNginxUrl(String roomId) {
-        return CommUtils.appendUrl(nginxUrl, roomId + "/" + roomId + ".m3u8");
+    public String getNginxUrl(String roomId, String format) {
+        String path=format.replace("{roomId}", roomId).replace("{roomId}", roomId);
+        return CommUtils.appendUrl(nginxUrl, path);
     }
 
     /**
@@ -38,6 +40,16 @@ public class DownUpConfig {
     public String getRoomIdFilePath(String roomId) {
         return CommUtils.appendUrl(downPath, roomId);
     }
+    /**
+     * 获取本地m3u8文件
+     *
+     * @param roomId
+     * @return
+     */
+    public String getRoomM3u8Path(String roomId, String format) {
+        String path=format.replace("{roomId}", roomId).replace("{roomId}", roomId);
+        return CommUtils.appendUrl(getRoomIdFilePath(roomId), path);
+    }
 
     /**
      * 获取本地m3u8文件
@@ -46,7 +58,7 @@ public class DownUpConfig {
      * @return
      */
     public String getRoomM3u8Path(String roomId) {
-        return CommUtils.appendUrl(getRoomIdFilePath(roomId), roomId + ".m3u8");
+        return getRoomM3u8Path(roomId, format);
     }
 
 }

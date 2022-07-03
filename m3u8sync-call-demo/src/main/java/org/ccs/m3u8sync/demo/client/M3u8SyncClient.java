@@ -32,16 +32,16 @@ public class M3u8SyncClient {
     }
 
 
-    public String addSync(@RequestParam("roomId") String roomId, CallbackVo callback) {
+    public String addSync(@RequestParam("roomId") String roomId, @RequestParam("format") String format, @RequestParam("url") String url, CallbackVo callback) {
         HttpHeaders requestHeaders = initPostHeader();
-        String url = CommUtils.appendUrl(m3u8AsyncDemoConfiguration.getApiUrl(), "downup/add");
-        url = url + "?roomId=" + roomId;
+        String apiUrl = CommUtils.appendUrl(m3u8AsyncDemoConfiguration.getApiUrl(), "downup/add");
+        apiUrl = apiUrl + "?roomId=" + roomId+"&url="+url+"&format="+format;
 
         String bodyString = JSONUtil.toJsonStr(callback);
         log.info("----addSync--roomId={}, bodyString={}", roomId, bodyString);
 
         HttpEntity<String> httpEntitys = new HttpEntity<>(bodyString, requestHeaders);
-        ResponseEntity<String> exchanges = restTemplate.postForEntity(url, httpEntitys, String.class);
+        ResponseEntity<String> exchanges = restTemplate.postForEntity(apiUrl, httpEntitys, String.class);
         String resultRemote = exchanges.getBody();
         log.info("----addSync--roomId={}, resultRemote={}", roomId, resultRemote);
         return resultRemote;

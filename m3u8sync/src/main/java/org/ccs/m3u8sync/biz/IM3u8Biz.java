@@ -13,9 +13,9 @@ import java.util.Date;
 public interface IM3u8Biz {
     public Date getRoomModifyTime(String roomId);
 
-    public M3u8FileInfoVo getFileInfo(String roomId);
+    public M3u8FileInfoVo getFileInfo(String roomId, String format);
 
-    public M3u8FileInfoVo getM3u8Info(String roomId);
+    public M3u8FileInfoVo getM3u8Info(String roomId, String format);
 
     public boolean existFirstTryTs(String roomId);
 }

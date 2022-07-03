@@ -4,14 +4,16 @@ downup:
   open: true
   #同时下载的并发线程数
   task-nums: 2
+  #格式
+  format: '{roomId}/{roomId}.m3u8'
   #每个任务并发线程数
-  task-thread-count: 5
+  task-thread-count: 2
   #最大下载线程数
   thread-max: 50
   #最大允许重复任务的执行间隔,单位小时
   time-interval: 24
   #可下载的nginx服务地址
-  nginx-url: http://localhost/m3u8/live/
+  nginx-url: http://175.178.252.112:81/m3u8/live/
   #下载目录
   down-path: /data/down/
   #过期时间，任务从开始到过期48小时，如果48小时且多次重试都失败的，就放弃

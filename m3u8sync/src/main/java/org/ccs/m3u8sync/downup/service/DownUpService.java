@@ -174,8 +174,10 @@ public class DownUpService {
         log.info("从队列获取一个下载任务...,队列剩余个数{},异常数量堆积{}个", queue.size(), queue.errSize());
         //先下载原画,然后上传原画成功后,再下载试看的M3u8,再上传试看的资源到阿里
         String roomId = bean.getRoomId();
-        String url = downUpConfig.getNginxUrl(roomId);
-        String m3u8Path = downUpConfig.getRoomM3u8Path(roomId);
+        String url = bean.getUrl();
+        String m3u8Path = downUpConfig.getRoomIdFilePath(roomId);
+        String fileName = url.substring(url.lastIndexOf("/"));
+        m3u8Path = CommUtils.appendUrl(m3u8Path, fileName);
         File destFile = FileUtil.file(m3u8Path);
         //不重新设置M3u8,保持与原文件一致
         DownResult result = null;
@@ -289,7 +291,7 @@ public class DownUpService {
 
     public Map<String, Object> status(String type) {
         Map<String, Object> treeMap = new TreeMap<>();
-        if (StringUtils.isBlank(type)||"help".equals(type)) {
+        if (StringUtils.isBlank(type) || "help".equals(type)) {
             treeMap.put("usage", "type=help,all,config,errors,queue");
             return treeMap;
         }

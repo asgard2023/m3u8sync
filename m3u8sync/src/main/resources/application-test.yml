@@ -11,7 +11,7 @@ downup:
   #最大允许重复任务的执行间隔,单位小时
   time-interval: 24
   #可下载的nginx服务地址
-  nginx-url: http://localhost:81/live/
+  nginx-url: http://175.178.252.112:81/m3u8/live/
   #下载目录
   down_path: /data/down/
   #过期时间，任务从开始到过期48小时，如果48小时且多次重试都失败的，就放弃

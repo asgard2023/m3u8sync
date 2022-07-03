@@ -10,13 +10,37 @@ java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
 
 ##常用接口
-###增加新的下载通知
-curl "http://localhost:8080/downup/add?roomId=xxx"
-###异常修复，之前有失败才能使用
+###/downup/add增加新的下载通知
+示例：http://localhost:9290/downup/add?roomId=xxx&format=xxx&m3u8Url=xxxx
+请求类型：post
+参数：
+- roomId 必填，房间
+- url 可选
+- format 可选(为空时取yml配置的downup.format)，如果url为空，则会根据format与yml配置的dowup.nginx-url动态生成url
+- callback(baseUrl,paramUrl) 可选，如果为空则用ymal的callback配置，用于下载完成后回调对应接口
+  例如1：
+  downup.nginx-url=http://175.178.252.112:81/m3u8/live/
+  format={roomId}/{roomId}.m3u8  
+  roomId=12344678
+  则下载的m3u8Url=http://175.178.252.112:81/m3u8/live/12344678/12344678.m3u8
+  例如2：
+  downup.nginx-url=http://175.178.252.112:81/m3u8/live/
+  format={roomId}/index.m3u8  
+  roomId=wukong
+  则下载的m3u8Url=http://175.178.252.112:81/m3u8/live/wukong/index.m3u8
+
+下载完成后可回调地址：
+- baseUrl+paramUrl.replace({roomId},roomId)
+- 如果开启回调，则收到回调接口的返回ok，才算成功，否则视为下载异常，加入异常队列，以便于下次重试。
+
+
+###/downup/one异常修复，之前有失败才能使用
 curl "http://localhost:8080/downup/one?roomId=xxxx"
-###手动批量异常恢复上传，每小时整点会自动执行这个
+###/downup/recover手动批量异常恢复上传，每小时整点会自动执行这个
 curl "http://localhost:8080/downup/recover"
-###上传进度查询
+- 无参数
+- 会把下载失败次数超过5次的m3u8的异常下载任务从异常队列移回下载队列，以便于继续下载。
+###/downup/status上传进度查询
 curl "http://localhost:8080/downup/status?type=help"
 
 ##功能特性

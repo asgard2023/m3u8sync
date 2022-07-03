@@ -18,6 +18,7 @@ import java.util.Date;
 @ToString
 public class DownBean implements Serializable {
     private String roomId;
+    private String url;
     private String title;
     private Date initTime;
     private CallbackVo callback;

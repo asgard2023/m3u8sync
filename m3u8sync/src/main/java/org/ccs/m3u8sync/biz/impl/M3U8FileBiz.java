@@ -39,26 +39,42 @@ public class M3U8FileBiz implements IM3u8Biz {
 
 
     @Override
-    public M3u8FileInfoVo getM3u8Info(String roomId) {
-        String roomPath = downUpConfig.getRoomM3u8Path(roomId);
+    public M3u8FileInfoVo getM3u8Info(String roomId, String format) {
+        String roomPath = downUpConfig.getRoomM3u8Path(roomId, format);
         File file = new File(roomPath);
+        //如果m3u8不存在，则目录中查找第一个m3u8
+//        if (!file.exists()) {
+//            file = findFirstM3u8(file);
+//        }
         if (!file.exists()) {
             log.warn("-----getM3u8Info--roomPath={} unexist", roomPath);
-            M3u8FileInfoVo m3u8Try = new M3u8FileInfoVo();
-            m3u8Try.setFileLength(0L);
-            m3u8Try.setFileCount(0);
-            m3u8Try.setDurationTime(0L);
-            return m3u8Try;
+            M3u8FileInfoVo fileInfoVo = new M3u8FileInfoVo();
+            fileInfoVo.setFilePath(roomPath);
+            fileInfoVo.setFileLength(0L);
+            fileInfoVo.setFileCount(0);
+            fileInfoVo.setDurationTime(0L);
+            return fileInfoVo;
         }
 
         return AvClipUtil.getM3u8FileInfoAll(file, null);
     }
 
-    @Override
-    public M3u8FileInfoVo getFileInfo(String roomId) {
-        String roomPath = downUpConfig.getRoomM3u8Path(roomId);
-        File file = new File(roomPath);
+    private File findFirstM3u8(File file) {
         file = file.getParentFile();
+        File[] files = file.listFiles();
+        for (File f : files) {
+            if (!(f.getName().endsWith(".m3u8"))) {
+               file =f;
+               break;
+            }
+        }
+        return file;
+    }
+
+    @Override
+    public M3u8FileInfoVo getFileInfo(String roomId, String format) {
+        String roomPath = downUpConfig.getRoomIdFilePath(roomId);
+        File file = new File(roomPath);
         File[] files = file.listFiles();
         int count = 0;
         Long length = 0L;

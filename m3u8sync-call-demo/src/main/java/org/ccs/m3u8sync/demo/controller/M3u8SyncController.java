@@ -28,11 +28,13 @@ public class M3u8SyncController {
     }
 
     @GetMapping("addSync")
-    public String addSync(@RequestParam(name = "roomId") String roomId) {
+    public String addSync(@RequestParam(value = "roomId") String roomId
+            , @RequestParam(value = "format", required = false) String format
+            , @RequestParam(value = "m3u8Url", required = false) String m3u8Url) {
         CallbackVo callbackVo = new CallbackVo();
         callbackVo.setBaseUrl(m3u8AsyncDemoConfiguration.getCallbackUrl());
         callbackVo.setParamUrl(m3u8AsyncDemoConfiguration.getCallParamUrl());
-        return m3u8SyncClient.addSync(roomId, callbackVo);
+        return m3u8SyncClient.addSync(roomId, format, m3u8Url, callbackVo);
     }
 
     @GetMapping("m3u8Info")

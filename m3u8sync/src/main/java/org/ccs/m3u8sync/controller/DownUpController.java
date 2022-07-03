@@ -2,6 +2,8 @@ package org.ccs.m3u8sync.controller;
 
 import cn.hutool.core.text.CharSequenceUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
+import org.ccs.m3u8sync.config.DownUpConfig;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.service.DownUpService;
 import org.ccs.m3u8sync.exceptions.ResultData;
@@ -20,6 +22,8 @@ import java.util.Date;
 public class DownUpController {
     @Autowired
     private DownUpService downUpService;
+    @Autowired
+    private DownUpConfig downUpConfig;
 
     /**
      * 重新执行指定房间任务 上传原画对应的试看,并更新CMS平台
@@ -39,18 +43,24 @@ public class DownUpController {
     }
 
     @PostMapping("add")
-    public ResultData add(@RequestParam("roomId") String roomId, CallbackVo callback) {
-        log.info("----add--roomId={}", roomId);
+    public ResultData add(@RequestParam("roomId") String roomId
+            , @RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
+            , @RequestParam(value = "url", required = false) String url
+            , CallbackVo callback) {
+        log.info("----add--roomId={} format={}", roomId, format);
         if (CharSequenceUtil.isBlank(roomId)) {
             return ResultData.error("roomId不能为空");
         }
-        DownBean bean = new DownBean(roomId, roomId, new Date(), callback, 0, 0, null, 0);
+        if (StringUtils.isBlank(url)) {
+            url = downUpConfig.getNginxUrl(roomId, format);
+        }
+        DownBean bean = new DownBean(roomId, url, roomId, new Date(), callback, 0, 0, null, 0);
         downUpService.addTask(roomId, bean);
         return ResultData.success();
     }
 
     @GetMapping("status")
-    public ResultData status(@RequestParam(name = "type", required = false) String type) {
+    public ResultData status(@RequestParam(value = "type", required = false) String type) {
         return ResultData.success(downUpService.status(type));
     }
 
