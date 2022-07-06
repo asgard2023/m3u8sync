@@ -197,17 +197,15 @@ public class DownLoadUtil {
             String line = lines.get(i);
             //嵌套m3u8递归处理
             if (line.contains(".m3u8")) {
-                log.info("嵌套m3u8解析,并重新下载");
-                log.info("m3u8={},line={}", m3u8Url, line);
+                log.info("嵌套m3u8解析,并重新下载,m3u8={},line={}", m3u8Url, line);
                 downloadM3u8NoException(parseUrl(m3u8Url, line), destFile, reM3u8);
                 break;
             }
             //多码率处理
             if (line.contains("#EXT-X-STREAM-INF")) {
                 //用下一个链接替换s,虽然不一定是高清的,但
-                log.info("多码率文件提供,选择首个码率进行下载");
                 String newM3u8Url = lines.get(++i);
-                log.info("m3u8={},line={},newM3u8={}", m3u8Url, line, newM3u8Url);
+                log.info("多码率文件提供,选择首个码率进行下载,m3u8={},line={},newM3u8={}", m3u8Url, line, newM3u8Url);
                 downloadM3u8NoException(parseUrl(m3u8Url, newM3u8Url), destFile, reM3u8);
                 break;
             }
