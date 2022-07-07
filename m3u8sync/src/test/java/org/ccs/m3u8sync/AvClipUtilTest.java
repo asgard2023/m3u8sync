@@ -1,10 +1,29 @@
 package org.ccs.m3u8sync;
 
+import org.ccs.m3u8sync.utils.AvClipUtil;
+import org.ccs.m3u8sync.vo.M3U8Row;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 class AvClipUtilTest {
+    private static List<M3U8Row> m3U8RowList =null;
+    @BeforeAll
+    static void init(){
+        System.out.println("--init--");
+        m3U8RowList = AvClipUtil.readM3U8("http://175.178.252.112:81/m3u8/live/wukong/index.m3u8");
+    }
     @Test
     void readM3U8() {
-        String roomPath = "D:\\1530512597.m3u8";
+        Assertions.assertTrue(m3U8RowList.size()>0, "m3u8 read");
+    }
+
+    @Test
+    void getDurationTime(){
+        Long durationTime = AvClipUtil.getDurationTime(m3U8RowList);
+        System.out.println("----durationTime="+durationTime);
+        Assertions.assertTrue(durationTime>0, "duration");
     }
 }

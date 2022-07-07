@@ -7,6 +7,9 @@ import java.net.URLEncoder;
 import java.util.Iterator;
 import java.util.Map;
 
+/**
+ * 常用工具类
+ */
 public class CommUtils {
     private CommUtils() {
 
@@ -104,13 +107,16 @@ public class CommUtils {
         if (path == null) {
             path = "";
         }
-        if (endWithChar(url, '/') && startWithChar(path, '/')) {//相当于startsWith
+        char splitChar = '/';
+        //相当于startsWith
+        if (endWithChar(url, splitChar) && startWithChar(path, splitChar)) {
             return url + path.substring(1);
-        } else if (endWithChar(url, '/') || startWithChar(path, '/')) {//相当于startsWith
+        }
+        //相当于startsWith
+        else if (endWithChar(url, splitChar) || startWithChar(path, splitChar)) {
             return url + path;
         }
-
-        return url + "/" + path;
+        return url + splitChar + path;
     }
 
     public static String getBaseUrl(String url) {
@@ -126,31 +132,5 @@ public class CommUtils {
             return url.substring(0, idxEnd);
         }
         return url;
-    }
-
-    public static String trimUrlDomainAndParam(String uri) {
-        if (uri == null) {
-            return null;
-        }
-        if (uri.indexOf("http") >= 0) {
-            String baseUrl = getBaseUrl(uri);
-            String path = uri.substring(baseUrl.length());
-            uri = path;
-        }
-        int idx = uri.indexOf("?");
-        if (idx > 0) {
-            uri = uri.substring(0, idx);
-        }
-        return uri;
-    }
-
-    public static String trimUrlParam(String uri) {
-        if (uri == null) {
-            return null;
-        }
-        if (uri.indexOf('?') >= 0) {
-            return uri.substring(0, uri.indexOf('?'));
-        }
-        return uri;
     }
 }
