@@ -49,7 +49,7 @@ curl "http://localhost:9290/downup/one?roomId=xxxx"
 curl "http://localhost:9290/downup/recover"
 - 无参数
 - 会把下载失败次数超过5次的m3u8的异常下载任务从异常队列移回下载队列，以便于继续下载。
-## 显示文件信息
-http://localhost:9290/m3u8/m3u8Info?roomId=1025050251
+### /m3u8/m3u8Info显示文件信息
+curl "http://localhost:9290/m3u8/m3u8Info?roomId=1025050251"
 ### /downup/status上传进度查询
 curl "http://localhost:9290/downup/status?type=help"
