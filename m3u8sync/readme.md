@@ -54,4 +54,4 @@ curl "http://localhost:9290/downup/status?type=help"
 ### /m3u8/m3u8Info显示m3u8信息，抱括时长
 curl "http://localhost:9290/m3u8/m3u8Info?roomId=1025050251"
 ### /m3u8/fileInfo显示文件信息
-curl "http://localhost:9290/m3u8/m3u8Info?roomId=1025050251"
+curl "http://localhost:9290/m3u8/fileInfo?roomId=1025050251"
