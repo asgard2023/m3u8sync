@@ -1,16 +1,16 @@
-#m3u8文件同步服务
+# m3u8文件同步服务
 一台m3u8服务器开nginx下载服务，支持nginx开启gzip以压缩数据
 另一台通过读下m3u8文件下载Nginx下对应的切片的方式同步数据
 
-##显示文件信息
+## 显示文件信息
 http://localhost:8080/m3u8/m3u8Info?roomId=1025050251
 
-##启动命令
+## 启动命令
 java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev  
 java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
 
-##常用接口
-###/downup/add增加新的下载通知
+## 常用接口
+### /downup/add增加新的下载通知
 示例：http://localhost:9290/downup/add?roomId=xxx&format=xxx&m3u8Url=xxxx
 请求类型：post
 参数：
@@ -34,16 +34,16 @@ java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
 - 如果开启回调，则收到回调接口的返回ok，才算成功，否则视为下载异常，加入异常队列，以便于下次重试。
 
 
-###/downup/one异常修复，之前有失败才能使用
+### /downup/one异常修复，之前有失败才能使用
 curl "http://localhost:9290/downup/one?roomId=xxxx"
-###/downup/recover手动批量异常恢复上传，每小时整点会自动执行这个
+### /downup/recover手动批量异常恢复上传，每小时整点会自动执行这个
 curl "http://localhost:9290/downup/recover"
 - 无参数
 - 会把下载失败次数超过5次的m3u8的异常下载任务从异常队列移回下载队列，以便于继续下载。
-###/downup/status上传进度查询
+### /downup/status上传进度查询
 curl "http://localhost:9290/downup/status?type=help"
 
-##功能特性
+## 功能特性
 * 基于nginx下载的m3u8同步服务，可用于跨地域同步，网络差的情况。
 * 支持nginx的gzip，即下载时可走gzip模式，以降低流量。
 * 支持按单个m3u8进行同步。
