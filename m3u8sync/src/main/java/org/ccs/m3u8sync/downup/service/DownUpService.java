@@ -17,6 +17,7 @@ import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.downup.down.DownResult;
 import org.ccs.m3u8sync.downup.queue.DownQueue;
+import org.ccs.m3u8sync.exceptions.FailedException;
 import org.ccs.m3u8sync.exceptions.FileUnexistException;
 import org.ccs.m3u8sync.utils.CommUtils;
 import org.ccs.m3u8sync.vo.CallbackVo;
@@ -105,7 +106,7 @@ public class DownUpService {
             int timeInterval = downUpConfig.getTimeInterval();
             if (interval <= timeInterval) {
                 log.warn("roomId={},首次加入下载队列的时间为{},未超过配置的时间间隔{}h,本次提交被忽略", roomId, initTime, timeInterval);
-                return;
+                throw new FailedException("首次加入下载队列的时间为"+initTime+",未超过配置的时间间隔"+timeInterval+"h,本次提交被忽略");
             }
         }
         //单台使用synchronized来防止并发,集群需要变更为redis锁roomId防止并发写入队列
@@ -172,10 +173,15 @@ public class DownUpService {
     }
 
     private void doOneBean(DownBean bean) {
-        log.info("从队列获取一个下载任务...,队列剩余个数{},异常数量堆积{}个", queue.size(), queue.errSize());
+        log.info("从队列获取一个下载任务{} {},队列剩余个数{},异常数量堆积{}个", bean.getRoomId(), bean.getUrl(), queue.size(), queue.errSize());
         //先下载原画,然后上传原画成功后,再下载试看的M3u8,再上传试看的资源到阿里
         String roomId = bean.getRoomId();
         String url = bean.getUrl();
+        if(StringUtils.isBlank(url)||"null".equals(url)){
+            queue.delete(roomId);
+            log.warn("----doOneBean--roomId={} url={} is null remove task", roomId, url);
+            return;
+        }
         String m3u8Path = downUpConfig.getRoomIdFilePath(roomId);
         String fileName = url.substring(url.lastIndexOf("/"));
         m3u8Path = CommUtils.appendUrl(m3u8Path, fileName);

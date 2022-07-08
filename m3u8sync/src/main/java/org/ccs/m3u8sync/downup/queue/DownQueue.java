@@ -95,7 +95,7 @@ public class DownQueue {
         Long listSize =  redisTemplate.boundListOps(LIST_KEY).size();
         Long errlistSize = redisTemplate.boundListOps(ERR_LIST_KEY).size();
         if(!hashSize.equals (listSize + errlistSize)){
-            log.info("检测到有异常中断的任务,任务全集size={},待执行任务size={},失败任务size={}");
+            log.info("检测到有异常中断的任务,任务全集size={},待执行任务size={},失败任务size={}", listSize, errlistSize);
         }
         //将Hash有,但是queue没有的进行同步
         Set<String> all = redisTemplate.boundHashOps(HASH_KEY).keys();

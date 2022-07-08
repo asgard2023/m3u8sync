@@ -459,16 +459,22 @@ public class DownLoadUtil {
      */
     private static long getRemoteSize(String downloadUrl) {
         try {
-            HttpResponse response = HttpRequest.head(downloadUrl).setReadTimeout(5 * 1000).setConnectionTimeout(3 * 1000)
-                    //使nginx支持gzip时，仍然可以拿到contentLength
-                    .header(Header.ACCEPT_ENCODING, "none").execute();
-            if (response.isOk()) {
-                return response.contentLength();
-            }
+            Long response = getRemoteSize(downloadUrl, 5000);
+            if (response != null) return response;
         } catch (Exception e) {
-            log.error("远程获取文件downloadUrl={}大小失败", downloadUrl, e);
+            log.error("---getRemoteSize--{} error={}", downloadUrl, e.getMessage(), e);
         }
         return 0;
+    }
+
+    public static Long getRemoteSize(String downloadUrl, int timeout) {
+        HttpResponse response = HttpRequest.head(downloadUrl).setReadTimeout(timeout).setConnectionTimeout(timeout)
+                //使nginx支持gzip时，仍然可以拿到contentLength
+                .header(Header.ACCEPT_ENCODING, "none").execute();
+        if (response.isOk()) {
+            return response.contentLength();
+        }
+        return null;
     }
 
     /**
