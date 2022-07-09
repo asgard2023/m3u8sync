@@ -99,7 +99,6 @@ public class M3u8SyncClient {
         ResponseEntity<String> exchanges = restTemplate.exchange(url, HttpMethod.GET, request, String.class);
         String resultRemote = exchanges.getBody();
         log.info("----getM3u8Info--roomId={}, resultRemote={}", roomId, resultRemote);
-        M3u8FileInfoVo fileInfo = JSONUtil.parse(resultRemote).toBean(M3u8FileInfoVo.class);
-        return fileInfo;
+        return JSONUtil.parse(resultRemote).toBean(M3u8FileInfoVo.class);
     }
 }
