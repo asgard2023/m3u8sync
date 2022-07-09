@@ -2,21 +2,14 @@ package org.ccs.m3u8sync.demo.exceptions;
 
 
 public class UnknownException extends BaseException {
-
-    /**
-     *
-     */
+    private static final ResultCode resultCode = ResultCode.ERROR_UNKNOWN;
     private static final long serialVersionUID = 1L;
 
     public UnknownException(String errorMsg) {
-        super(ResultCode.ERROR_UNKNOWN, errorMsg);
+        super(resultCode.getCode(), errorMsg);
     }
 
     public UnknownException() {
-        super(ResultCode.ERROR_UNKNOWN, null);
-    }
-
-    public UnknownException(String i18nCode, String lang) {
-        super(ResultCode.ERROR_UNKNOWN, null);
+        super(resultCode.getCode(), resultCode.getMsg());
     }
 }

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 下载服务处理
+ *
  * @author chenjh
  */
 @RestController
@@ -25,6 +26,7 @@ public class M3u8SyncController {
 
     /**
      * 用于上传成功后回调的接口
+     *
      * @param roomId
      * @param fileInfo
      * @return
@@ -37,13 +39,14 @@ public class M3u8SyncController {
 
     /**
      * 增加新下载任务
+     *
      * @param roomId
      * @param format
      * @param m3u8Url
      * @return
      */
     @PostMapping("addSync")
-    public Object addSync(@RequestParam(value = "roomId") String roomId
+    public ResultData addSync(@RequestParam(value = "roomId") String roomId
             , @RequestParam(value = "format", required = false) String format
             , @RequestParam(value = "m3u8Url", required = false) String m3u8Url) {
         CallbackVo callbackVo = new CallbackVo();
@@ -54,6 +57,7 @@ public class M3u8SyncController {
 
     /**
      * 查询已下载的m3u8信息
+     *
      * @param roomId
      * @param format
      * @return
@@ -61,11 +65,7 @@ public class M3u8SyncController {
     @GetMapping("m3u8Info")
     public ResultData getM3u8Info(@RequestParam(name = "roomId") String roomId
             , @RequestParam(value = "format", required = false) String format) {
-        try {
-            M3u8FileInfoVo fileInfoVo = m3u8SyncClient.getM3u8Info(roomId, format);
-            return ResultData.success(fileInfoVo);
-        } catch (Exception e) {
-            return ResultData.error(e.getMessage());
-        }
+        M3u8FileInfoVo fileInfoVo = m3u8SyncClient.getM3u8Info(roomId, format);
+        return ResultData.success(fileInfoVo);
     }
 }

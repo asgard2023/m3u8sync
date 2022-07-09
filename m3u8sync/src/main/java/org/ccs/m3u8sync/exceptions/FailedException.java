@@ -1,21 +1,14 @@
 package org.ccs.m3u8sync.exceptions;
 
 public class FailedException extends BaseException {
-
-    /**
-     *
-     */
+    private static final ResultCode resultCode = ResultCode.DEFAULT_FAILED;
     private static final long serialVersionUID = 1L;
 
     public FailedException(String errorMsg) {
-        super(ResultCode.DEFAULT_FAILED_CODE, errorMsg);
+        super(resultCode.getCode(), errorMsg);
     }
 
     public FailedException() {
-        super(ResultCode.DEFAULT_FAILED_CODE, null);
-    }
-
-    public FailedException(String i18nCode, String lang) {
-        super(ResultCode.DEFAULT_FAILED_CODE, null);
+        super(resultCode.getCode(), resultCode.getMsg());
     }
 }

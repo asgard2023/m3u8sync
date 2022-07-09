@@ -3,9 +3,12 @@ package org.ccs.m3u8sync.demo.exceptions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.Serializable;
-
-public class ResultData implements Serializable {
+/**
+ * Return result type
+ *
+ * @author chenjh
+ */
+public class ResultData {
     private String resultCode;
     private String errorMsg;
     private Object data;
@@ -30,15 +33,19 @@ public class ResultData implements Serializable {
     }
 
     public static ResultData error(BaseException myException) {
-        return new ResultData(myException.getResultCode(), myException.getMessage(), null, "biz");
+        String title = myException.getTitle();
+        if (title == null) {
+            title = "biz";
+        }
+        return new ResultData(myException.getResultCode(), myException.getMessage(), null, title);
     }
 
     public static ResultData success() {
-        return new ResultData(ResultCode.DEFAULT_SUCCESS_CODE, ResultCode.DEFAULT_SUCCESS_CODE_MSG, null, "no");
+        return new ResultData(ResultCode.DEFAULT_SUCCESS.getCode(), ResultCode.DEFAULT_SUCCESS.getMsg(), null, "no");
     }
 
     public static ResultData success(Object data) {
-        return new ResultData(ResultCode.DEFAULT_SUCCESS_CODE, ResultCode.DEFAULT_SUCCESS_CODE_MSG, data, "no");
+        return new ResultData(ResultCode.DEFAULT_SUCCESS.getCode(), ResultCode.DEFAULT_SUCCESS.getMsg(), data, "no");
     }
 
 
@@ -59,7 +66,7 @@ public class ResultData implements Serializable {
     }
 
     public Boolean getSuccess() {
-        return ResultCode.DEFAULT_SUCCESS_CODE.equals(resultCode);
+        return ResultCode.DEFAULT_SUCCESS.getCode().equals(resultCode);
     }
 
     public Object getData() {

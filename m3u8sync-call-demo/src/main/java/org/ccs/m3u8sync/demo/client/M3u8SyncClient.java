@@ -6,6 +6,7 @@ import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.demo.config.M3u8AsyncDemoConfiguration;
+import org.ccs.m3u8sync.demo.exceptions.FailedException;
 import org.ccs.m3u8sync.demo.exceptions.ResultCode;
 import org.ccs.m3u8sync.demo.exceptions.ResultData;
 import org.ccs.m3u8sync.demo.utils.CommUtils;
@@ -16,9 +17,9 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
-import java.net.URI;
 import java.net.URLEncoder;
 
 @Service
@@ -53,19 +54,10 @@ public class M3u8SyncClient {
         log.info("----addSync--roomId={}, bodyString={}", roomId, bodyString);
 
         HttpEntity<String> httpEntitys = new HttpEntity<>(bodyString, requestHeaders);
-        String resultRemote = null;
-        ResultData resultData = null;
-        try {
-            URI uri = new URI(apiUrl);
-            ResponseEntity<String> exchanges = restTemplate.postForEntity(uri, httpEntitys, String.class);
-            resultRemote = exchanges.getBody();
-            log.info("----addSync--roomId={}, resultRemote={}", roomId, resultRemote);
-            resultData = getResultData(resultRemote);
-        } catch (Exception e) {
-            log.error("----addSync--roomId={}, apiUrl={}", roomId, apiUrl, e);
-            return ResultData.error("roomId=" + roomId + ", error=" + e.getMessage());
-        }
-        return resultData;
+        ResponseEntity<String> exchanges = restTemplate.postForEntity(apiUrl, httpEntitys, String.class);
+        String resultRemote = exchanges.getBody();
+        log.info("----addSync--roomId={}, resultRemote={}", roomId, resultRemote);
+        return getResultData(resultRemote);
     }
 
     private ResultData getResultData(String jsonBody) {
@@ -73,12 +65,12 @@ public class M3u8SyncClient {
         String resultCode = jsonObject.getStr("resultCode");
         String errorMsg = jsonObject.getStr("errorMsg");
         Object data = jsonObject.getObj("data", null);
-        if("null".equals(data)|| JSONNull.NULL==data) {
-            data=null;
+        if ("null".equals(data) || JSONNull.NULL == data) {
+            data = null;
         }
         String errorType = jsonObject.getStr("errorType");
-        ResultData resultData=null;
-        if (ResultCode.DEFAULT_SUCCESS_CODE.equals(resultCode)) {
+        ResultData resultData = null;
+        if (ResultCode.DEFAULT_SUCCESS.getCode().equals(resultCode)) {
             resultData = ResultData.success(data);
         } else {
             resultData = ResultData.error(resultCode, errorMsg);
