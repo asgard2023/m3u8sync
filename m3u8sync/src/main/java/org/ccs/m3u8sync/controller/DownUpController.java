@@ -47,7 +47,7 @@ public class DownUpController {
     public ResultData add(@RequestParam("roomId") String roomId
             , @RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
             , @RequestParam(value = "m3u8Url", required = false) String m3u8Url
-            , CallbackVo callback) {
+            , @RequestBody CallbackVo callback) {
 
         if (CharSequenceUtil.isBlank(roomId)) {
             log.warn("----add--roomId={} isBlank", roomId);
@@ -56,27 +56,27 @@ public class DownUpController {
         if (StringUtils.isBlank(m3u8Url)) {
             m3u8Url = downUpConfig.getNginxUrl(roomId, format);
         }
-        if(StringUtils.isBlank(m3u8Url)||"null".equals(m3u8Url)){
+        if (StringUtils.isBlank(m3u8Url) || "null".equals(m3u8Url)) {
             log.warn("----add--roomId={} m3u8Url={} invalid", roomId, m3u8Url);
             return ResultData.error("m3u8Url不能为空");
         }
 
         try {
-            Long length=DownLoadUtil.getRemoteSize(m3u8Url, 3000);
-            if(length==null||length==0){
+            Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);
+            if (length == null || length == 0) {
                 log.warn("----add--roomId={} m3u8Url={} size={} get fail", roomId, m3u8Url, length);
-                return ResultData.error(m3u8Url+":get fail");
+                return ResultData.error(m3u8Url + ":get fail");
             }
         } catch (Exception e) {
             log.error("----add--roomId={} m3u8Url={} error={}", roomId, m3u8Url, e.getMessage());
-            return ResultData.error(m3u8Url+":"+e.getMessage());
+            return ResultData.error(m3u8Url + ":" + e.getMessage());
         }
         log.info("----add--roomId={} format={} m3u8Url={}", roomId, format, m3u8Url);
         DownBean bean = new DownBean(roomId, m3u8Url, roomId, new Date(), callback, 0, 0, null, 0);
         try {
             downUpService.addTask(roomId, bean);
         } catch (Exception e) {
-            return ResultData.error("roomId:"+roomId+","+e.getMessage());
+            return ResultData.error("roomId:" + roomId + "," + e.getMessage());
         }
         return ResultData.success();
     }

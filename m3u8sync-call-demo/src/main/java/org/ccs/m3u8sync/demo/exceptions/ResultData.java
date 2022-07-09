@@ -1,4 +1,4 @@
-package org.ccs.m3u8sync.exceptions;
+package org.ccs.m3u8sync.demo.exceptions;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
