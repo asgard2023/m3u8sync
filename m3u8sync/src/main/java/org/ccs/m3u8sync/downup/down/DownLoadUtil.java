@@ -29,12 +29,14 @@ import java.util.stream.Collectors;
 public class DownLoadUtil {
     private static int maxThread = 40; //下载并发的最大线程数
     private static int taskTheadCount = 20; //线程池的最小线程数
+    private static int threadDownloadExpire=30;
     //这里使用最大容量线程池以应对可能存在的多线程调用
     private static Executor consumer = ThreadUtil.newExecutor(taskTheadCount, maxThread);
 
-    public static void setTaskTheadCount(Integer taskTheadCount, Integer maxThread) {
+    public static void setTaskTheadCount(Integer taskTheadCount, Integer maxThread, int threadDownloadExpire) {
         DownLoadUtil.taskTheadCount = taskTheadCount;
         DownLoadUtil.maxThread = maxThread;
+        DownLoadUtil.threadDownloadExpire=threadDownloadExpire;
         consumer = ThreadUtil.newExecutor(taskTheadCount, maxThread);
     }
 
@@ -185,7 +187,7 @@ public class DownLoadUtil {
         log.info("m3u8Url={},下载文件路径={}", m3u8Url, destFile.getAbsolutePath());
         File file;
         try {
-            file = HttpUtil.downloadFileFromUrl(m3u8Url, destFile, 10 * 1000);
+            file = HttpUtil.downloadFileFromUrl(m3u8Url, destFile, threadDownloadExpire * 1000);
         } catch (Exception e) {
             log.error("m3u8Url={},下载失败,e={}", m3u8Url, e.getMessage());
             throw new FileUnexistException(e.getMessage());
@@ -498,10 +500,10 @@ public class DownLoadUtil {
             if (localSize == remoteSize) {
                 return true;
             }
-            log.info("m3u8File={}的远程文件{}大小为{},本地文件大小为{},需要重新下载", m3u8File.getName(), tsDestFile.getName(), remoteSize, localSize);
+            log.info("---downloadTs--m3u8File={}的远程文件{}大小为{},本地文件大小为{},需要重新下载", m3u8File.getName(), tsDestFile.getName(), remoteSize, localSize);
         }
         //30s下载时长
-        int timeOut = 30 * 1000;
+        int timeOut = threadDownloadExpire * 1000;
         boolean hasDown = false;
         try {
             if (tsKey != null) {
@@ -513,14 +515,14 @@ public class DownLoadUtil {
                     FileUtil.writeBytes(bytes, tsDestFile);
                     hasDown = true;
                 } catch (Exception e) {
-                    log.error("tsUrl={},解密失败,e={}", tsUrl, e.getMessage());
+                    log.error("downloadTs--tsUrl={},解密失败,e={}", tsUrl, e.getMessage());
                 }
             } else {
                 HttpUtil.downloadFileFromUrl(tsUrl, tsDestFile, timeOut);
                 hasDown = true;
             }
         } catch (Exception e) {
-            log.error("tsUrl={},error={}", tsUrl, e.getMessage());
+            log.error("downloadTs--tsUrl={},error={}", tsUrl, e.getMessage());
         }
         return hasDown;
     }

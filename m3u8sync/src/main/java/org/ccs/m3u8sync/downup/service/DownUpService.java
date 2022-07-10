@@ -65,7 +65,7 @@ public class DownUpService {
         }
         //检测queue结构中的hash和pop的数量是否一致,不一致就进行从hash中重新灌入到pop中
         queue.syncBreak();
-        DownLoadUtil.setTaskTheadCount(downUpConfig.getTaskThreadCount(), downUpConfig.getThreadMax());
+        DownLoadUtil.setTaskTheadCount(downUpConfig.getTaskThreadCount(), downUpConfig.getThreadMax(), downUpConfig.getThreadDownloadTimeout());
         doTask();
     }
 

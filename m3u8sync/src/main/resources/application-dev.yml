@@ -1,6 +1,6 @@
 #下载并上传的任务控制
 downup:
-  #是否开启下载上传任务
+  #是否开启下载任务
   open: true
   #同时下载的并发线程数
   task-num: 2
@@ -10,6 +10,8 @@ downup:
   task-thread-count: 2
   #最大下载线程数
   thread-max: 50
+  #线程进行url下载的超时时间（文件越大，网络越慢，这个时间越长）
+  thread-download-timeout: 30
   #最大允许重复任务的执行间隔,单位小时
   time-interval: 24
   #可下载的nginx服务地址

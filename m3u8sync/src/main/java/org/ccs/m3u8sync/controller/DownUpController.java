@@ -14,6 +14,7 @@ import org.ccs.m3u8sync.vo.CallbackVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.net.URLDecoder;
 import java.util.Date;
 
 /**
@@ -61,6 +62,11 @@ public class DownUpController {
         if (StringUtils.isBlank(m3u8Url) || "null".equals(m3u8Url)) {
             log.warn("----add--roomId={} m3u8Url={} invalid", roomId, m3u8Url);
             throw new ParamNullException("m3u8Url不能为空");
+        }
+        else{
+            if(m3u8Url.startsWith("http%3A%2F%2F")||m3u8Url.startsWith("https%3A%2F%2F")){
+                m3u8Url= URLDecoder.decode(m3u8Url);
+            }
         }
 
 
