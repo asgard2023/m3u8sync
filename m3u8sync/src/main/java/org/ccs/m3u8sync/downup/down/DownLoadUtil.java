@@ -314,7 +314,7 @@ public class DownLoadUtil {
             //这里读取size, 将导致errUrls和successLines 线程不安全
             int errSize = errUrls.size();
             int successSize = successLines.size();
-            log.info("检测任务roomId={} fileName={},执行进度,失败数/成功下载/总数: {}/{}/{} ,异常监听次数: {} ", roomId, fileName, errSize, successSize, totalSize, initWaitTimes);
+            log.info("检测任务roomId={} fileName={},执行进度,失败数/成功下载/总数: {}/{}/{} ,异常监听次数:{}(与上次检测时成功数没变化异常监听次数+1)", roomId, fileName, errSize, successSize, totalSize, initWaitTimes);
             if ((successSize + errSize) == totalSize || initWaitTimes >= totalWaitTimes) {
                 if (successSize == totalSize) {
                     log.info("任务roomId={} fileName={}下载任务已结束", roomId, fileName);
