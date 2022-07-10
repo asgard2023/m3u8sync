@@ -29,14 +29,14 @@ import java.util.stream.Collectors;
 public class DownLoadUtil {
     private static int maxThread = 40; //下载并发的最大线程数
     private static int taskTheadCount = 20; //线程池的最小线程数
-    private static int threadDownloadExpire=30;
+    private static int threadDownloadExpire = 30;
     //这里使用最大容量线程池以应对可能存在的多线程调用
     private static Executor consumer = ThreadUtil.newExecutor(taskTheadCount, maxThread);
 
     public static void setTaskTheadCount(Integer taskTheadCount, Integer maxThread, int threadDownloadExpire) {
         DownLoadUtil.taskTheadCount = taskTheadCount;
         DownLoadUtil.maxThread = maxThread;
-        DownLoadUtil.threadDownloadExpire=threadDownloadExpire;
+        DownLoadUtil.threadDownloadExpire = threadDownloadExpire;
         consumer = ThreadUtil.newExecutor(taskTheadCount, maxThread);
     }
 
@@ -307,7 +307,7 @@ public class DownLoadUtil {
         int initWaitTimes = 0;
         String fileName = m3u8File.getName();
         int oldSuccessSize = 0;
-        int sleepTime=threadDownloadExpire*1000;
+        int sleepTime = threadDownloadExpire * 1000;
         //这里是单线程循环
         while (true) {
             ThreadUtil.sleep(sleepTime);
@@ -379,45 +379,33 @@ public class DownLoadUtil {
             consumer.execute(() -> {
                 while (!task.isEmpty()) {
                     try {
-                        runTaskDownTs(roomId, m3u8File, tsKey, successLineMap, task, successLines, errUrls, errIndexs);
+//                        获取一个ts进行下载
+                        String tsLine = task.take();
+                        String index = tsLine.split(separator)[0];
+                        String url = tsLine.split(separator)[1];
+                        boolean hasDown = downloadTs(roomId, m3u8File, tsKey, url);
+                        if (hasDown) {
+                            successLines.add(url);
+                            successLineMap.put(Integer.parseInt(index), url);
+                        } else {
+                            //增加锁判断
+                            if (!errIndexs.contains(index)) {
+                                if(!errUrls.contains(url)) {
+                                    log.warn("roomId={} url={},下载失败,重新放入下载队列", roomId, url);
+                                    errUrls.add(url);
+                                    task.put(tsLine);
+                                }
+                            } else {
+                                errUrls.add(url);
+                                errIndexs.add(index);
+                            }
+                        }
                     } catch (Exception e) {
                         log.warn("队列读取异常,roomId={}线程退出,错误信息e={}", roomId, e.getMessage());
                         break;
                     }
                 }
             });
-        }
-    }
-
-    /**
-     * 获取一个ts进行下载
-     *
-     * @param m3u8File
-     * @param tsKey
-     * @param successLineMap
-     * @param task
-     * @param successLines
-     * @param errUrls
-     * @param errIndexs
-     * @throws InterruptedException
-     */
-    private static void runTaskDownTs(final String roomId, File m3u8File, TsKey tsKey, Map<Integer, String> successLineMap, ArrayBlockingQueue<String> task, List<String> successLines, List<String> errUrls, Set<String> errIndexs) throws InterruptedException {
-        String tsLine = task.take();
-        String index = tsLine.split(separator)[0];
-        String url = tsLine.split(separator)[1];
-        boolean hasDown = downloadTs(roomId, m3u8File, tsKey, url);
-        if (hasDown) {
-            successLines.add(url);
-            successLineMap.put(Integer.parseInt(index), url);
-        } else {
-            //增加锁判断
-            if (!errIndexs.contains(index)) {
-                log.warn("roomId={} url={},下载失败,重新放入下载队列", roomId, url);
-                task.put(tsLine);
-            } else {
-                errUrls.add(url);
-                errIndexs.add(index);
-            }
         }
     }
 
@@ -505,7 +493,7 @@ public class DownLoadUtil {
         }
         //30s下载时长
         int timeOut = threadDownloadExpire * 1000;
-        long time=System.currentTimeMillis();
+        long time = System.currentTimeMillis();
         boolean hasDown = false;
         try {
             if (tsKey != null) {
@@ -523,9 +511,9 @@ public class DownLoadUtil {
                 HttpUtil.downloadFileFromUrl(tsUrl, tsDestFile, timeOut);
                 hasDown = true;
             }
-            log.debug("downloadTs--roomId={} tsUrl={},hasDown={} time={}", roomId, tsUrl, hasDown, System.currentTimeMillis()-time);
+            log.debug("downloadTs--roomId={} tsUrl={},hasDown={} time={}", roomId, tsUrl, hasDown, System.currentTimeMillis() - time);
         } catch (Exception e) {
-            log.error("downloadTs--roomId={} tsUrl={},time={} error={}", roomId, tsUrl,  System.currentTimeMillis()-time, e.getMessage());
+            log.error("downloadTs--roomId={} tsUrl={},time={} error={}", roomId, tsUrl, System.currentTimeMillis() - time, e.getMessage());
         }
         return hasDown;
     }
