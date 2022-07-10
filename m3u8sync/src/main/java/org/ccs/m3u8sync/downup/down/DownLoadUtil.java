@@ -167,11 +167,11 @@ public class DownLoadUtil {
         return tsUrl.substring(0, param);
     }
 
-    public static DownResult downloadM3u8NoException(String m3u8Url, File destFile, boolean reM3u8) {
+    public static DownResult downloadM3u8NoException(String roomId, String m3u8Url, File destFile, boolean reM3u8) {
         try {
-            return downloadM3u8(m3u8Url, destFile, reM3u8);
+            return downloadM3u8(roomId, m3u8Url, destFile, reM3u8);
         } catch (Exception e) {
-            log.error("downloadM3u8NoException={},下载失败,e={}", m3u8Url, e.getMessage());
+            log.error("downloadM3u8NoException--roomId={} m3u8Url={},下载失败,e={}", roomId, m3u8Url, e.getMessage());
             return null;
         }
     }
@@ -183,13 +183,13 @@ public class DownLoadUtil {
      * @param destFile 本地保存的m3u8文件
      * @param reM3u8   是否重建本地m3u8
      */
-    public static DownResult downloadM3u8(String m3u8Url, File destFile, boolean reM3u8) {
-        log.info("m3u8Url={},下载文件路径={}", m3u8Url, destFile.getAbsolutePath());
+    public static DownResult downloadM3u8(String roomId, String m3u8Url, File destFile, boolean reM3u8) {
+        log.info("downloadM3u8--roomId={} m3u8Url={},下载文件路径={}", roomId, m3u8Url, destFile.getAbsolutePath());
         File file;
         try {
             file = HttpUtil.downloadFileFromUrl(m3u8Url, destFile, threadDownloadExpire * 1000);
         } catch (Exception e) {
-            log.error("m3u8Url={},下载失败,e={}", m3u8Url, e.getMessage());
+            log.error("roomId={} m3u8Url={},下载失败,e={}", roomId, m3u8Url, e.getMessage());
             throw new FileUnexistException(e.getMessage());
         }
         List<String> lines = FileUtil.readLines(file, StandardCharsets.UTF_8);
@@ -200,7 +200,7 @@ public class DownLoadUtil {
             //嵌套m3u8递归处理
             if (line.contains(".m3u8")) {
                 log.info("嵌套m3u8解析,并重新下载,m3u8={},line={}", m3u8Url, line);
-                downloadM3u8NoException(parseUrl(m3u8Url, line), destFile, reM3u8);
+                downloadM3u8NoException(roomId, parseUrl(m3u8Url, line), destFile, reM3u8);
                 break;
             }
             //多码率处理
@@ -208,7 +208,7 @@ public class DownLoadUtil {
                 //用下一个链接替换s,虽然不一定是高清的,但
                 String newM3u8Url = lines.get(++i);
                 log.info("多码率文件提供,选择首个码率进行下载,m3u8={},line={},newM3u8={}", m3u8Url, line, newM3u8Url);
-                downloadM3u8NoException(parseUrl(m3u8Url, newM3u8Url), destFile, reM3u8);
+                downloadM3u8NoException(roomId, parseUrl(m3u8Url, newM3u8Url), destFile, reM3u8);
                 break;
             }
             //解析key,iv
@@ -227,7 +227,7 @@ public class DownLoadUtil {
             }
         }
         //下载所有的ts,并返回ts目录
-        List<String> successLines = downTsByThread(file, tsKey, tsUrls);
+        List<String> successLines = downTsByThread(roomId, file, tsKey, tsUrls);
         //重新编排m3u8
         if (reM3u8) {
             resetM3u8BySuccessTs(m3u8Url, file, lines, successLines);
@@ -276,7 +276,7 @@ public class DownLoadUtil {
      * @param tsUrls
      * @return
      */
-    private static List<String> downTsByThread(File m3u8File, TsKey tsKey, List<String> tsUrls) {
+    private static List<String> downTsByThread(String roomId, File m3u8File, TsKey tsKey, List<String> tsUrls) {
         Map<Integer, String> successLineMap = new ConcurrentHashMap<>();
         int totalSize = tsUrls.size();
         ArrayBlockingQueue<String> task = m3u8TsToQueueTask(tsUrls);
@@ -285,9 +285,9 @@ public class DownLoadUtil {
         List<String> successLines = new Vector<>();
         List<String> errUrls = new Vector<>();
         //运行下载线程
-        runTaskDownThread(m3u8File, tsKey, successLineMap, task, successLines, errUrls);
+        runTaskDownThread(roomId, m3u8File, tsKey, successLineMap, task, successLines, errUrls);
         //显示线程下载进度，如果下载未完成就休眠等待
-        showWaitDownProcess(m3u8File, totalSize, successLines, errUrls);
+        showWaitDownProcess(roomId, m3u8File, totalSize, successLines, errUrls);
         //增加task的强移除, 确保分线程能够正常退出
         task.clear();
         return MapUtil.sort(successLineMap).values().stream().collect(Collectors.toList());
@@ -301,34 +301,35 @@ public class DownLoadUtil {
      * @param successLines
      * @param errUrls
      */
-    private static void showWaitDownProcess(File m3u8File, int totalSize, List<String> successLines, List<String> errUrls) {
+    private static void showWaitDownProcess(String roomId, File m3u8File, int totalSize, List<String> successLines, List<String> errUrls) {
         //阻塞并监听当前进度
         int totalWaitTimes = 5;
         int initWaitTimes = 0;
         String fileName = m3u8File.getName();
         int oldSuccessSize = 0;
+        int sleepTime=threadDownloadExpire*1000;
         //这里是单线程循环
         while (true) {
-            ThreadUtil.sleep(10000);
+            ThreadUtil.sleep(sleepTime);
             //这里读取size, 将导致errUrls和successLines 线程不安全
             int errSize = errUrls.size();
             int successSize = successLines.size();
-            log.info("检测任务{},执行进度,失败数/成功下载/总数: {}/{}/{} ,异常监听次数: {} ", fileName, errSize, successSize, totalSize, initWaitTimes);
+            log.info("检测任务roomId={} fileName={},执行进度,失败数/成功下载/总数: {}/{}/{} ,异常监听次数: {} ", roomId, fileName, errSize, successSize, totalSize, initWaitTimes);
             if ((successSize + errSize) == totalSize || initWaitTimes >= totalWaitTimes) {
                 if (successSize == totalSize) {
-                    log.info("任务{}下载任务已结束", fileName);
+                    log.info("任务roomId={} fileName={}下载任务已结束", roomId, fileName);
                 } else {
-                    log.info("下载任务{}已结束,但不完整下载,errSize={}", fileName, errSize);
+                    log.info("下载任务roomId={} fileName={}已结束,但不完整下载,errSize={}", roomId, fileName, errSize);
                     if (errSize > 0) {
                         //这里循环会导致errUrls线程不安全
                         errUrls.forEach(url -> {
-                            log.error("下载失败的链接: {}", url);
+                            log.error("roomId={}下载失败的链接: {}", roomId, url);
                         });
                     }
                 }
                 break;
             }
-            //异常程序补丁,当线程不安全时, 可能存在数据不一致; 需要有效退出
+            //比较两次下载简格，如果成功数没有变化，视为异常
             if (oldSuccessSize == successSize) {
                 initWaitTimes++;
             }
@@ -371,16 +372,16 @@ public class DownLoadUtil {
      * @param successLines
      * @param errUrls
      */
-    private static void runTaskDownThread(File m3u8File, TsKey tsKey, Map<Integer, String> successLineMap, ArrayBlockingQueue<String> task, List<String> successLines, List<String> errUrls) {
+    private static void runTaskDownThread(final String roomId, File m3u8File, TsKey tsKey, Map<Integer, String> successLineMap, ArrayBlockingQueue<String> task, List<String> successLines, List<String> errUrls) {
         //失败的链接的索引
         Set<String> errIndexs = new ConcurrentHashSet<>();
         for (int i = 1; i < taskTheadCount; i++) {
             consumer.execute(() -> {
                 while (!task.isEmpty()) {
                     try {
-                        runTaskDownTs(m3u8File, tsKey, successLineMap, task, successLines, errUrls, errIndexs);
+                        runTaskDownTs(roomId, m3u8File, tsKey, successLineMap, task, successLines, errUrls, errIndexs);
                     } catch (Exception e) {
-                        log.warn("队列读取异常,线程退出,错误信息e={}", e.getMessage());
+                        log.warn("队列读取异常,roomId={}线程退出,错误信息e={}", roomId, e.getMessage());
                         break;
                     }
                 }
@@ -400,18 +401,18 @@ public class DownLoadUtil {
      * @param errIndexs
      * @throws InterruptedException
      */
-    private static void runTaskDownTs(File m3u8File, TsKey tsKey, Map<Integer, String> successLineMap, ArrayBlockingQueue<String> task, List<String> successLines, List<String> errUrls, Set<String> errIndexs) throws InterruptedException {
+    private static void runTaskDownTs(final String roomId, File m3u8File, TsKey tsKey, Map<Integer, String> successLineMap, ArrayBlockingQueue<String> task, List<String> successLines, List<String> errUrls, Set<String> errIndexs) throws InterruptedException {
         String tsLine = task.take();
         String index = tsLine.split(separator)[0];
         String url = tsLine.split(separator)[1];
-        boolean hasDown = downloadTs(m3u8File, tsKey, url);
+        boolean hasDown = downloadTs(roomId, m3u8File, tsKey, url);
         if (hasDown) {
             successLines.add(url);
             successLineMap.put(Integer.parseInt(index), url);
         } else {
             //增加锁判断
             if (!errIndexs.contains(index)) {
-                log.warn("url={},下载失败,重新放入下载队列", url);
+                log.warn("roomId={} url={},下载失败,重新放入下载队列", roomId, url);
                 task.put(tsLine);
             } else {
                 errUrls.add(url);
@@ -488,7 +489,7 @@ public class DownLoadUtil {
      * @return
      * @throws Exception
      */
-    private static boolean downloadTs(File m3u8File, TsKey tsKey, String tsUrl) {
+    private static boolean downloadTs(String roomId, File m3u8File, TsKey tsKey, String tsUrl) {
         File pFile = m3u8File.getParentFile();
         //重定义文件名
         File tsDestFile = new File(pFile, obtainTsUrl(tsUrl, false));
@@ -500,10 +501,11 @@ public class DownLoadUtil {
             if (localSize == remoteSize) {
                 return true;
             }
-            log.info("---downloadTs--m3u8File={}的远程文件{}大小为{},本地文件大小为{},需要重新下载", m3u8File.getName(), tsDestFile.getName(), remoteSize, localSize);
+            log.info("---downloadTs--roomId={} m3u8File={}的远程文件{}大小为{},本地文件大小为{},需要重新下载", roomId, m3u8File.getName(), tsDestFile.getName(), remoteSize, localSize);
         }
         //30s下载时长
         int timeOut = threadDownloadExpire * 1000;
+        long time=System.currentTimeMillis();
         boolean hasDown = false;
         try {
             if (tsKey != null) {
@@ -515,14 +517,15 @@ public class DownLoadUtil {
                     FileUtil.writeBytes(bytes, tsDestFile);
                     hasDown = true;
                 } catch (Exception e) {
-                    log.error("downloadTs--tsUrl={},解密失败,e={}", tsUrl, e.getMessage());
+                    log.error("downloadTs--roomId={} tsUrl={},解密失败,e={}", roomId, tsUrl, e.getMessage());
                 }
             } else {
                 HttpUtil.downloadFileFromUrl(tsUrl, tsDestFile, timeOut);
                 hasDown = true;
             }
+            log.debug("downloadTs--roomId={} tsUrl={},hasDown={} time={}", roomId, tsUrl, hasDown, System.currentTimeMillis()-time);
         } catch (Exception e) {
-            log.error("downloadTs--tsUrl={},error={}", tsUrl, e.getMessage());
+            log.error("downloadTs--roomId={} tsUrl={},time={} error={}", roomId, tsUrl,  System.currentTimeMillis()-time, e.getMessage());
         }
         return hasDown;
     }

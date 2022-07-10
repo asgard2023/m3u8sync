@@ -189,7 +189,7 @@ public class DownUpService {
         //不重新设置M3u8,保持与原文件一致
         DownResult result = null;
         try {
-            result = DownLoadUtil.downloadM3u8(url, destFile, false);
+            result = DownLoadUtil.downloadM3u8(roomId, url, destFile, false);
         } catch (FileUnexistException e) {
             downFailCounter.incrementAndGet();
             log.error("----doOneBean--roomId={} m3u8Path={} not found，直接从任务移除，需要调用add重新加入方可恢复", roomId, m3u8Path);
