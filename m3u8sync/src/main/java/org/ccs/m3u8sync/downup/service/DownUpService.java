@@ -285,6 +285,7 @@ public class DownUpService {
             if (isCallBackOk(response.body())) {
                 isSuccess = true;
                 downBean.setError(null);
+                removeFail("callbackOnSuccess", roomId);
             }
         } catch (HttpException e) {
             callbackFailCounter.incrementAndGet();
@@ -435,7 +436,12 @@ public class DownUpService {
         failCountMap.put(errorKey, count);
         log.warn("---failCount-roomId={} code={} count={} errorCount={}", roomId, code, count, errorMap.size());
         //小休眠一下
-        ThreadUtil.sleep(1000 * count * 5);
+        ThreadUtil.sleep(1000L * count * 5);
         return count;
+    }
+
+    private void removeFail(String code, String roomId){
+        String errorKey = code + ":" + roomId;
+        failCountMap.remove(errorKey);
     }
 }
