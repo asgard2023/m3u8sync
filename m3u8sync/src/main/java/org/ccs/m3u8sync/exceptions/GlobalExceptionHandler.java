@@ -23,7 +23,7 @@ import java.util.TreeMap;
  * 捕获异常统一处理
  *
  * @version v1.0
- * @modified by chenjh
+ * @author chenjh
  */
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -84,7 +84,7 @@ public class GlobalExceptionHandler {
     public ResultData handleBaseException(HttpServletRequest request, BaseException e) {
         String logType = getLogExceptionTypeBase();
         Map<String, Object> parameterMap = this.getRequestMap(request);
-        if (("full".equals(logType)) && !(e instanceof BaseException || e instanceof FailedException || e instanceof ParamNullException || e instanceof ParamErrorException)) {
+        if ("full".equals(logType)) {
             logger.warn("----handleBaseException method={} request={}\n error:{}", request.getMethod(), parameterMap, e.getMessage(), e);
         } else {
             logger.warn("----handleBaseException method={} request={}\n error:{}", request.getMethod(), parameterMap, e.getMessage());
@@ -96,6 +96,10 @@ public class GlobalExceptionHandler {
     private static String logExceptionTypeBase = "simple";
     private static String getLogExceptionTypeBase() {
         return logExceptionTypeBase;
+    }
+    public static void setLogExceptionTypeBase(String logExceptionTypeBase) {
+        GlobalExceptionHandler.logExceptionTypeBase=logExceptionTypeBase;
+        logger.info("-----setLogExceptionTypeBase--logExceptionTypeBase={}", logExceptionTypeBase);
     }
 
 }

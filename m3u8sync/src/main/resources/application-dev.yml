@@ -1,3 +1,7 @@
+m3u8sync:
+  #自定义异常，异常日志类型simple/full
+  exceptionLogType: full
+
 #下载并上传的任务控制
 downup:
   #是否开启下载任务

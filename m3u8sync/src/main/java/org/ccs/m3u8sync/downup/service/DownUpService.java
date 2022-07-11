@@ -13,12 +13,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.config.CallbackConfiguration;
 import org.ccs.m3u8sync.config.DownUpConfig;
+import org.ccs.m3u8sync.config.M3u8SyncConfiguration;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.downup.down.DownResult;
 import org.ccs.m3u8sync.downup.queue.DownQueue;
 import org.ccs.m3u8sync.exceptions.FailedException;
 import org.ccs.m3u8sync.exceptions.FileUnexistException;
+import org.ccs.m3u8sync.exceptions.GlobalExceptionHandler;
 import org.ccs.m3u8sync.utils.CommUtils;
 import org.ccs.m3u8sync.vo.CallbackVo;
 import org.ccs.m3u8sync.vo.M3u8FileInfoVo;
@@ -45,6 +47,8 @@ public class DownUpService {
     private DownUpConfig downUpConfig;
     @Autowired
     private CallbackConfiguration callbackConfiguration;
+    @Autowired
+    private M3u8SyncConfiguration m3u8SyncConfiguration;
     //下载成功数
     private static AtomicInteger downSuccessCounter = new AtomicInteger();
     //下载失败数
@@ -59,6 +63,7 @@ public class DownUpService {
             return;
         }
         log.info("目前迁移任务数量{}个,异常队列数量{}个", queue.size(), queue.errSize());
+        GlobalExceptionHandler.setLogExceptionTypeBase(m3u8SyncConfiguration.getExceptionLogType());
         //自动恢复失败的任务
         if (queue.errSize() > 0) {
             queue.moveErr();
