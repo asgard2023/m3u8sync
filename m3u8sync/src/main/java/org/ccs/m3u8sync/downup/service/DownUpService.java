@@ -106,7 +106,7 @@ public class DownUpService {
             int timeInterval = downUpConfig.getTimeInterval();
             if (interval <= timeInterval) {
                 log.warn("roomId={},首次加入下载队列的时间为{},未超过配置的时间间隔{}h,本次提交被忽略", roomId, initTime, timeInterval);
-                throw new FailedException("首次加入下载队列的时间为"+initTime+",未超过配置的时间间隔"+timeInterval+"h,本次提交被忽略");
+                throw new FailedException("首次加入下载队列的时间为" + initTime + ",未超过配置的时间间隔" + timeInterval + "h,本次提交被忽略");
             }
         }
         //单台使用synchronized来防止并发,集群需要变更为redis锁roomId防止并发写入队列
@@ -177,7 +177,7 @@ public class DownUpService {
         //先下载原画,然后上传原画成功后,再下载试看的M3u8,再上传试看的资源到阿里
         String roomId = bean.getRoomId();
         String url = bean.getUrl();
-        if(StringUtils.isBlank(url)||"null".equals(url)){
+        if (StringUtils.isBlank(url) || "null".equals(url)) {
             queue.delete(roomId);
             log.warn("----doOneBean--roomId={} url={} is null remove task", roomId, url);
             return;
@@ -246,6 +246,8 @@ public class DownUpService {
      *
      * @param downBean
      * @param fileInfoVo
+     *
+     * @author chenjh
      */
     private boolean callbackOnSuccess(DownBean downBean, M3u8FileInfoVo fileInfoVo) {
         boolean open = callbackConfiguration.isOpen();
@@ -262,23 +264,20 @@ public class DownUpService {
             return isSuccess;
         }
 
-        //优先用户传的baseUrl
-        String baseUrl = (String) CommUtils.nvl(callback.getBaseUrl(), callbackConfiguration.getBaseUrl());
-        String paramUrl = (String) CommUtils.nvl(callback.getParamUrl(), callbackConfiguration.getParamUrl());
-        if (StringUtils.isBlank(baseUrl)) {
-            log.warn("----callbackOnSuccess--roomId={} callback.baseUrl is null", roomId, callback.getBaseUrl());
-            downBean.setError("baseUrl is null");
+        String callbackUrl = null;
+        try {
+            callbackUrl = getCallbackUrl(roomId, callback);
+        } catch (Exception e) {
+            downBean.setError(e.getMessage());
             return isSuccess;
         }
-        callback.setBaseUrl(baseUrl);
-        String callbackUrl = CommUtils.appendUrl(baseUrl, paramUrl);
+
         try {
-            callbackUrl = callbackUrl.replace("{roomId}", roomId);
             String body = JSONUtil.toJsonStr(fileInfoVo);
             log.info("----callbackOnSuccess--roomId={} callbackUrl={} req.body={}", roomId, callbackUrl, body);
             HttpResponse response = HttpUtil.createPost(callbackUrl).body(body).timeout(10000).execute();
             log.info("----callbackOnSuccess--roomId={} resp.body={}", roomId, response.body());
-            if ("ok".equals(response.body())) {
+            if (isCallBackOk(response.body())) {
                 isSuccess = true;
                 downBean.setError(null);
             }
@@ -286,8 +285,90 @@ public class DownUpService {
             callbackFailCounter.incrementAndGet();
             downBean.setError("callbackErr:" + e.getMessage());
             log.error("----callbackOnSuccess--roomId={} callbackUrl={}", roomId, callbackUrl, e);
+            //如果回调失败，可以重试3次
+            Integer count = failCount("callbackOnSuccess", roomId);
+            if (count < RETRY_COUNT) {
+                return callbackOnSuccess(downBean, fileInfoVo);
+            }
         }
         return isSuccess;
+    }
+
+    private String getCallbackUrl(String roomId, CallbackVo callback) {
+        //优先用户传的baseUrl
+        String baseUrl = (String) CommUtils.nvl(callback.getBaseUrl(), callbackConfiguration.getBaseUrl());
+        String paramUrl = (String) CommUtils.nvl(callback.getParamUrl(), callbackConfiguration.getParamUrl());
+        if (StringUtils.isBlank(baseUrl)) {
+            log.warn("----callbackOnSuccess--roomId={} callback.baseUrl is null", roomId, callback.getBaseUrl());
+            throw new FailedException("baseUrl is null");
+        }
+        String callbackUrl = CommUtils.appendUrl(baseUrl, paramUrl);
+        return callbackUrl.replace("{roomId}", roomId);
+    }
+
+    private Map<String, String> callbackCheckMap = new ConcurrentHashMap<>();
+
+    /**
+     * 每个新的回调接口检查一下回调接口的有效性，如果成功只检查一次
+     * 以免接口无效任务执行完真的开始回调时发现接口不可用。
+     *
+     * @param roomId
+     * @param callback
+     * @return
+     * @author chenjh
+     */
+    public boolean checkCallback(String roomId, CallbackVo callback) {
+        String callbackUrl = this.getCallbackUrl(roomId, callback);
+        boolean isOk = false;
+        try {
+            //如果开关未开启，不用检查，直接通过
+            if (!downUpConfig.isOpen()) {
+                return true;
+            }
+            //用baseUrl当key，作用是，每个新的回调接口检查一次
+            String baseUrl = CommUtils.getBaseUrl(callbackUrl);
+            String result = callbackCheckMap.get(baseUrl);
+            if (isCallBackOk(result)) {
+                return true;
+            }
+            synchronized (baseUrl.intern()) {
+                result = callbackCheckMap.get(baseUrl);
+                if (isCallBackOk(result)) {
+                    return true;
+                }
+                M3u8FileInfoVo fileInfoVo = new M3u8FileInfoVo();
+                fileInfoVo.setFilePath("test");
+                String body = JSONUtil.toJsonStr(fileInfoVo);
+                log.info("----checkCallback--roomId={} callbackUrl={} req.body={}", roomId, callbackUrl, body);
+                HttpResponse response = HttpUtil.createPost(callbackUrl).body(body).timeout(10000).execute();
+                String responseContent = response.body();
+                isOk = isCallBackOk(responseContent);
+                if (!isOk) {
+                    log.warn("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, responseContent);
+                    throw new FailedException("callbackCheck:" + responseContent + " invalid (need:ok)");
+                }
+                callbackCheckMap.put(baseUrl, responseContent);
+            }
+            return isOk;
+        } catch (HttpException e) {
+            log.error("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, e);
+            throw new FailedException("callbackCheck:" + e.getMessage()+","+callbackUrl);
+        }
+        catch (Exception e){
+            log.error("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, e);
+            throw new FailedException("callbackCheck:" + e.getMessage()+","+callbackUrl);
+        }
+    }
+
+    /**
+     * 回调接口必须返回ok才算成功
+     *
+     * @param body
+     * @return
+     * @author chenjh
+     */
+    private boolean isCallBackOk(String body) {
+        return "ok".equals(body);
     }
 
     private boolean notExistRemote(String url) {
@@ -325,5 +406,31 @@ public class DownUpService {
             treeMap.put("callbackConfig", callbackConfiguration);
         }
         return treeMap;
+    }
+
+    private static Map<String, Integer> failCountMap = new ConcurrentHashMap<>();
+    //失败重试次数
+    private static final int RETRY_COUNT = 3;
+
+    /**
+     * 失败次一次，休眠时间+5杪，比如：5秒，10秒，15秒
+     *
+     * @param code
+     * @param roomId
+     * @return
+     * @author chenjh
+     */
+    private Integer failCount(String code, String roomId) {
+        String errorKey = code + ":" + roomId;
+        Integer count = failCountMap.get(errorKey);
+        if (count == null) {
+            count = 0;
+        }
+        count++;
+        failCountMap.put(errorKey, count);
+        log.warn("---failCount-roomId={} code={} count={} errorCount={}", roomId, code, count, errorMap.size());
+        //小休眠一下
+        ThreadUtil.sleep(1000 * count * 5);
+        return count;
     }
 }

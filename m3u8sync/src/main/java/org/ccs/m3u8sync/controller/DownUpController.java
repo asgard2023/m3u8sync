@@ -62,13 +62,14 @@ public class DownUpController {
         if (StringUtils.isBlank(m3u8Url) || "null".equals(m3u8Url)) {
             log.warn("----add--roomId={} m3u8Url={} invalid", roomId, m3u8Url);
             throw new ParamNullException("m3u8Url不能为空");
-        }
-        else{
-            if(m3u8Url.startsWith("http%3A%2F%2F")||m3u8Url.startsWith("https%3A%2F%2F")){
-                m3u8Url= URLDecoder.decode(m3u8Url);
+        } else {
+            if (m3u8Url.startsWith("http%3A%2F%2F") || m3u8Url.startsWith("https%3A%2F%2F")) {
+                m3u8Url = URLDecoder.decode(m3u8Url);
             }
         }
 
+        //检查一下回调接口是否正常（如果成功只检查一次）
+        downUpService.checkCallback("checkCallback", callback);
 
         Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);
         if (length == null || length == 0) {

@@ -2,6 +2,7 @@ package org.ccs.m3u8sync.demo.controller;
 
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.demo.client.M3u8SyncClient;
 import org.ccs.m3u8sync.demo.config.M3u8AsyncDemoConfiguration;
 import org.ccs.m3u8sync.demo.exceptions.ResultData;
@@ -30,9 +31,15 @@ public class M3u8SyncController {
      * @param roomId
      * @param fileInfo
      * @return
+     *
      */
     @PostMapping("callback/{roomId}")
     public String callback(@PathVariable(value = "roomId") String roomId, @RequestBody M3u8FileInfoVo fileInfo) {
+        //用于快速验证回调接口
+        if (StringUtils.equals("checkCallback", roomId) && StringUtils.equals("test", fileInfo.getFilePath())) {
+            log.info("----callback--roomId={} check ok", roomId);
+            return "ok";
+        }
         log.info("----callback--roomId={} fileInfo={}", roomId, JSONUtil.toJsonStr(fileInfo));
         return "ok";
     }
