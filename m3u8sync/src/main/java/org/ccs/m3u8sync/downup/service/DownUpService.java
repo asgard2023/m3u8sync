@@ -292,7 +292,7 @@ public class DownUpService {
             log.error("----callbackOnSuccess--roomId={} callbackUrl={}", roomId, callbackUrl, e);
             //如果回调失败，可以重试3次
             Integer count = failCount("callbackOnSuccess", roomId);
-            if (count < RETRY_COUNT) {
+            if (count <= RETRY_COUNT) {
                 return callbackOnSuccess(downBean, fileInfoVo);
             }
         }
