@@ -84,7 +84,7 @@ public class GlobalExceptionHandler {
     public ResultData handleBaseException(HttpServletRequest request, BaseException e) {
         String logType = getLogExceptionTypeBase();
         Map<String, Object> parameterMap = this.getRequestMap(request);
-        if (("full".equals(logType)) && !(e instanceof BaseException)) {
+        if (("full".equals(logType)) && !(e instanceof BaseException || e instanceof FailedException || e instanceof ParamNullException || e instanceof ParamErrorException)) {
             logger.warn("----handleBaseException method={} request={}\n error:{}", request.getMethod(), parameterMap, e.getMessage(), e);
         } else {
             logger.warn("----handleBaseException method={} request={}\n error:{}", request.getMethod(), parameterMap, e.getMessage());
