@@ -391,7 +391,7 @@ public class DownLoadUtil {
                             //增加锁判断
                             if (!errIndexs.contains(index)) {
                                 if(!errUrls.contains(url)) {
-                                    log.warn("roomId={} url={},下载失败,重新放入下载队列", roomId, url);
+                                    log.warn("---runTaskDownThread--roomId={} url={},下载失败,重新放入下载队列", roomId, url);
                                     errUrls.add(url);
                                     task.put(tsLine);
                                 }
@@ -401,7 +401,7 @@ public class DownLoadUtil {
                             }
                         }
                     } catch (Exception e) {
-                        log.warn("队列读取异常,roomId={}线程退出,错误信息e={}", roomId, e.getMessage());
+                        log.warn("---runTaskDownThread--队列读取异常,roomId={}线程退出,错误信息e={}", roomId, e.getMessage());
                         break;
                     }
                 }

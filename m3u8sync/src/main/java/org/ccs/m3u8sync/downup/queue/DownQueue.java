@@ -24,9 +24,9 @@ public class DownQueue {
     private RedisTemplate redisTemplate;
 
     /** 永久key */
-    private static final String HASH_KEY = "nfsync:downup:downhash";
-    private static final String LIST_KEY = "nfsync:downup:downlist";
-    private static final String ERR_LIST_KEY = "nfsync:downup:downerrlist";
+    private static final String HASH_KEY = "m3u8sync:downup:downhash";
+    private static final String LIST_KEY = "m3u8sync:downup:downlist";
+    private static final String ERR_LIST_KEY = "m3u8sync:downup:downerrlist";
 
     /**
      * 将下载任务放入到队列中,默认是插入到队尾
