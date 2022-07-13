@@ -12,11 +12,15 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.ccs.m3u8sync.exceptions.FileUnexistException;
+import org.springframework.http.HttpStatus;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.File;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.security.spec.AlgorithmParameterSpec;
 import java.util.*;
@@ -27,6 +31,10 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class DownLoadUtil {
+    private DownLoadUtil() {
+
+    }
+
     private static int maxThread = 40; //下载并发的最大线程数
     private static int taskTheadCount = 20; //线程池的最小线程数
     private static int threadDownloadExpire = 30;
@@ -43,7 +51,7 @@ public class DownLoadUtil {
     /**
      * 示例返回 https://xxx.com
      *
-     * @param url
+     * @param url url地址
      * @return
      */
     private static String getDomainPrefix(String url) {
@@ -204,7 +212,7 @@ public class DownLoadUtil {
                 break;
             }
             //多码率处理
-            if (line.contains("#EXT-X-STREAM-INF")) {
+            else if (line.contains("#EXT-X-STREAM-INF")) {
                 //用下一个链接替换s,虽然不一定是高清的,但
                 String newM3u8Url = lines.get(++i);
                 log.info("多码率文件提供,选择首个码率进行下载,m3u8={},line={},newM3u8={}", m3u8Url, line, newM3u8Url);
@@ -212,12 +220,12 @@ public class DownLoadUtil {
                 break;
             }
             //解析key,iv
-            if (line.contains("#EXT-X-KEY")) {
+            else if (line.contains("#EXT-X-KEY")) {
                 tsKey = getKey(m3u8Url, line);
                 log.info("ts分片加密,解析key和iv进行解密,tsKey={}", tsKey.toString());
             }
             //解析ts分片
-            if (line.contains("#EXTINF")) {
+            else if (line.contains("#EXTINF")) {
                 String tsUrl = lines.get(++i);
                 if (CharSequenceUtil.isBlank(tsUrl) || !tsUrl.contains(DownConstant.TS)) {
                     continue;
@@ -247,10 +255,7 @@ public class DownLoadUtil {
         List<String> newLines = new ArrayList<>(successLines.size());
         for (int i = 0; i < lines.size(); i++) {
             String line = lines.get(i);
-            if (line.contains(DownConstant.KEY)) {
-                continue;
-            }
-            if (line.startsWith("#EXT-X-PROGRAM-DATE-TIME")) {
+            if (line.contains(DownConstant.KEY) || line.startsWith("#EXT-X-PROGRAM-DATE-TIME")) {
                 continue;
             }
             if (line.contains(DownConstant.TS)) {
@@ -390,7 +395,7 @@ public class DownLoadUtil {
                         } else {
                             //增加锁判断
                             if (!errIndexs.contains(index)) {
-                                if(!errUrls.contains(url)) {
+                                if (!errUrls.contains(url)) {
                                     log.warn("---runTaskDownThread--roomId={} url={},下载失败,重新放入下载队列", roomId, url);
                                     errUrls.add(url);
                                     task.put(tsLine);
@@ -458,14 +463,60 @@ public class DownLoadUtil {
         return 0;
     }
 
+    /**
+     * hutool通过head取文件在小，如果出现405则再通过url conn再试一次
+     *
+     * @param downloadUrl
+     * @param timeout
+     * @return
+     * @author chenjh
+     */
     public static Long getRemoteSize(String downloadUrl, int timeout) {
         HttpResponse response = HttpRequest.head(downloadUrl).setReadTimeout(timeout).setConnectionTimeout(timeout)
                 //使nginx支持gzip时，仍然可以拿到contentLength
                 .header(Header.ACCEPT_ENCODING, "none").execute();
         if (response.isOk()) {
             return response.contentLength();
+        } else {
+            log.warn("getRemoteSize-url={} status={}", downloadUrl, response.getStatus());
+            if (response.getStatus() == HttpStatus.METHOD_NOT_ALLOWED.value()) {
+                try {
+                    return getRemoteLength(downloadUrl, timeout);
+                } catch (IOException e) {
+                    log.error("getRemoteSize-url={} err={}", downloadUrl, e.getMessage(), e);
+                }
+            }
         }
         return null;
+    }
+
+    /**
+     * @return long
+     * @Author chenjh
+     * @Description //获取网络文件大小
+     * @Param [downloadUrl]
+     */
+    private static Long getRemoteLength(String downloadUrl, int timeout) throws IOException {
+        if (downloadUrl == null || "".equals(downloadUrl)) {
+            return 0L;
+        }
+        URL url = new URL(downloadUrl);
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("HEAD");
+            conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows 7; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/47.0.2526.73 Safari/537.36 YNoteCef/5.8.0.1 (Windows)");
+            conn.setReadTimeout(timeout);
+            conn.setConnectTimeout(timeout);
+            return (long) conn.getContentLength();
+        } catch (Exception e) {
+            log.error("getRemoteLength-url={} err={}", downloadUrl, e.getMessage(), e);
+            return 0L;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
     }
 
     /**
@@ -569,18 +620,4 @@ public class DownLoadUtil {
         }
         return data;
     }
-
-    public static void main(String[] args) throws Exception {
-        String m3u8Url = "https://maoyun-02.yxaar.com/sv/2715466f-180d9d0c01f/2715466f-180d9d0c01f.m3u8?auth_key=1652912051-32d96e2-0-5245976a7b15d582431bd6a73ff86c36";
-/*        //业务上更合适的是定义 title
-        String title = "11756328A20211208115007";
-        String fileName =  title + DownConstant.M3U8;
-        String baseDir = "F:\\download\\movie\\";
-        FileUtil.mkdir(baseDir + title);
-        File destFile = new File(baseDir + title , fileName);
-        downloadM3u8(m3u8Url,destFile,true);*/
-        long size = getRemoteSize(m3u8Url);
-        log.info("大小为:" + size);
-    }
-
 }
