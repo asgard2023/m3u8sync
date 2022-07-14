@@ -30,6 +30,7 @@ public class NginxApiRestTest {
         List<String> roomIdList = nginxApiRest.getM3u8List(null);
         List<String> okList = new ArrayList<>();
         String format = downUpConfig.getFormat();
+        format="{roomId}/index.m3u8";
         for (String roomId : roomIdList) {
             String m3u8Url = downUpConfig.getNginxUrl(roomId, format);
             Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);

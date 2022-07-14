@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.DownUpConfig;
+import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.downup.service.DownUpService;
@@ -17,9 +18,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * 下载服务处理
@@ -93,7 +92,7 @@ public class DownUpController {
         }
 
         log.info("----add--roomId={} format={} m3u8Url={}", roomId, format, m3u8Url);
-        DownBean bean = new DownBean(roomId, m3u8Url, roomId, new Date(), callback, 0, 0, null, 0);
+        DownBean bean = new DownBean(roomId, m3u8Url, new Date(), callback);
         downUpService.addTask(roomId, bean);
         return ResultData.success();
     }
@@ -108,8 +107,17 @@ public class DownUpController {
      */
     @PostMapping("addNginxList")
     public ResultData addNginxList(@RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
-            , @RequestParam(value = "path", required = false, defaultValue = "path") String path
+            , @RequestParam(value = "path", required = false) String path
+            , @RequestParam(value = "syncType", required = false) String syncType
             , @RequestBody CallbackVo callback) {
+
+        SyncType syncTypeObj = SyncType.M3U8;
+        if (StringUtils.isNotBlank(syncType)) {
+            syncTypeObj = SyncType.parse(syncType);
+            if (syncTypeObj == null) {
+                throw new ParamErrorException("syncType:" + syncType + ",invalid");
+            }
+        }
         //检查一下回调接口是否正常（如果成功只检查一次）
         downUpService.checkCallback("checkCallback", callback);
 
@@ -119,6 +127,8 @@ public class DownUpController {
             format = downUpConfig.getFormat();
         }
         List<String> okList = new ArrayList<>();
+        Map<String, Object> resultMap = new TreeMap<>();
+        List<String> errorInfos = new ArrayList<>();
         for (String roomId : roomIdList) {
             String m3u8Url = downUpConfig.getNginxUrl(roomId, format);
             Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);
@@ -127,14 +137,21 @@ public class DownUpController {
                 continue;
             }
             try {
-                DownBean bean = new DownBean(roomId, m3u8Url, roomId, new Date(), callback, 0, 0, null, 0);
+                DownBean bean = new DownBean(roomId, m3u8Url, new Date(), callback);
+                bean.setSyncType(syncTypeObj.getType());
                 downUpService.addTask(roomId, bean);
                 okList.add(roomId);
             } catch (Exception e) {
                 log.warn("----add--roomId={} m3u8Url={} err={}", roomId, m3u8Url, e.getMessage());
+                errorInfos.add(m3u8Url + " " + e.getMessage());
             }
         }
-        return ResultData.success(okList);
+        resultMap.put("roomIdList", roomIdList);
+        resultMap.put("sizeRoom", roomIdList.size());
+        resultMap.put("sizeOk", okList.size());
+        resultMap.put("okList", okList);
+        resultMap.put("errorInfos", errorInfos);
+        return ResultData.success(resultMap);
     }
 
     @GetMapping("status")
