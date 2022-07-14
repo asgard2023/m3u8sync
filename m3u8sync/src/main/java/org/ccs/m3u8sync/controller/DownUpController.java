@@ -108,7 +108,7 @@ public class DownUpController {
      */
     @PostMapping("addNginxList")
     public ResultData addNginxList(@RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
-            , @RequestParam(value = "path", required = false, defaultValue = "path") String path
+            , @RequestParam(value = "path", required = false) String path
             , @RequestBody CallbackVo callback) {
         //检查一下回调接口是否正常（如果成功只检查一次）
         downUpService.checkCallback("checkCallback", callback);
