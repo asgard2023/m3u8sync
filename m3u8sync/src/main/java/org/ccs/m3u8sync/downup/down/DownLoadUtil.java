@@ -12,6 +12,9 @@ import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.ccs.m3u8sync.exceptions.FileUnexistException;
+import org.ccs.m3u8sync.utils.CommUtils;
+import org.ccs.m3u8sync.vo.FileInfoVo;
+import org.ccs.m3u8sync.vo.FileListVo;
 import org.springframework.http.HttpStatus;
 
 import javax.crypto.Cipher;
@@ -182,6 +185,24 @@ public class DownLoadUtil {
             log.error("downloadM3u8NoException--roomId={} m3u8Url={},下载失败,e={}", roomId, m3u8Url, e.getMessage());
             return null;
         }
+    }
+
+    public static DownResult downloadFiles(final String roomId, final FileListVo fileListVo, final String nginxUrl, final String downPath){
+        List<String> tsUrls=new ArrayList<>();
+        for(FileInfoVo fileInfoVo: fileListVo.getFiles()){
+            String url= CommUtils.appendUrl(nginxUrl, fileListVo.getPath());
+            url=CommUtils.appendUrl(url, fileInfoVo.getFileName());
+            tsUrls.add(url);
+        }
+        String destPath=downPath;
+        if(fileListVo.getPath()!=null) {
+            destPath = CommUtils.appendUrl(destPath, fileListVo.getPath());
+        }
+        String deseFilePath=CommUtils.appendUrl(destPath, "test.txt");
+        File destFile = FileUtil.file(deseFilePath);
+        //下载所有的ts,并返回ts目录
+        List<String> successLines = DownLoadUtil.downTsByThread(roomId, destFile, null, tsUrls);
+        return new DownResult(destFile, tsUrls.size(), successLines);
     }
 
     /**

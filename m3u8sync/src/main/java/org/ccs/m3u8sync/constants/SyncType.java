@@ -1,7 +1,13 @@
 package org.ccs.m3u8sync.constants;
 
 public enum SyncType {
+    /**
+     * m3u8模式，读取m3u8文件内所有的ts，同步m3u8及所有ts文件（不在m3u8内的文件不管）
+     */
     M3U8("m3u8", "m3u8同步"),
+    /**
+     * 在nginx开启文件列表显示时，可同步nginx目录指定目录递归所有子目录的所有文件，
+     */
     FILE("file", "file同步(nginx)");
 
 

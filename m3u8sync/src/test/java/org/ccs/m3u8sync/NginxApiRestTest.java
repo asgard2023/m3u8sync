@@ -1,9 +1,11 @@
 package org.ccs.m3u8sync;
 
+import com.alibaba.fastjson2.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.DownUpConfig;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
+import org.ccs.m3u8sync.vo.FileListVo;
 import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.junit.runner.RunWith;
@@ -27,10 +29,11 @@ public class NginxApiRestTest {
 
     @Test
     public void getM3u8List() {
-        List<String> roomIdList = nginxApiRest.getM3u8List(null);
+        FileListVo fileListVo = nginxApiRest.getM3u8List("live");
+        List<String> roomIdList = fileListVo.getFolders();
         List<String> okList = new ArrayList<>();
         String format = downUpConfig.getFormat();
-        format="{roomId}/index.m3u8";
+        format = "{roomId}/index.m3u8";
         for (String roomId : roomIdList) {
             String m3u8Url = downUpConfig.getNginxUrl(roomId, format);
             Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);
@@ -42,6 +45,15 @@ public class NginxApiRestTest {
         }
         System.out.println(roomIdList);
         System.out.println(okList);
-        Assertions.assertTrue(okList.size()>0, "okList gt 0");
+        Assertions.assertTrue(okList.size() > 0, "okList gt 0");
+    }
+
+
+
+    @Test
+    public void getAllFileList() {
+        List<FileListVo> list = new ArrayList<>();
+        this.nginxApiRest.getFileListBy(null, list);
+        System.out.println(JSON.toJSON(list));
     }
 }
