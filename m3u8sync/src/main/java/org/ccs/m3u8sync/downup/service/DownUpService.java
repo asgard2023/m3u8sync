@@ -11,9 +11,11 @@ import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.CallbackConfiguration;
 import org.ccs.m3u8sync.config.DownUpConfig;
 import org.ccs.m3u8sync.config.M3u8SyncConfiguration;
+import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.downup.down.DownResult;
@@ -23,6 +25,7 @@ import org.ccs.m3u8sync.exceptions.FileUnexistException;
 import org.ccs.m3u8sync.exceptions.GlobalExceptionHandler;
 import org.ccs.m3u8sync.utils.CommUtils;
 import org.ccs.m3u8sync.vo.CallbackVo;
+import org.ccs.m3u8sync.vo.FileListVo;
 import org.ccs.m3u8sync.vo.M3u8FileInfoVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -45,6 +48,8 @@ public class DownUpService {
     private DownQueue queue;
     @Autowired
     private DownUpConfig downUpConfig;
+    @Autowired
+    private NginxApiRest nginxApiRest;
     @Autowired
     private CallbackConfiguration callbackConfiguration;
     @Autowired
@@ -145,7 +150,11 @@ public class DownUpService {
                         log.warn("----doTask--roomId={} expireHour={} expired, remove task", roomId, timeHour);
                         continue;
                     }
-                    doOneBean(bean);
+                    if (SyncType.M3U8.getType().equals(bean.getSyncType())) {
+                        doOneBeanM3u8(bean);
+                    } else {
+                        doOneBeanFile(bean);
+                    }
                     log.info("---doTask--roomID={}的下载任务已结束", bean.getRoomId());
                 }
             });
@@ -165,7 +174,7 @@ public class DownUpService {
         queue.moveErr();
     }
 
-    public void doOneBean(String roomId) {
+    public void doOneBeanM3u8(String roomId) {
         if (checkDownupNotOpen()) {
             return;
         }
@@ -174,10 +183,57 @@ public class DownUpService {
             log.warn("任务队列中未查询到指定roomId={}的资源", roomId);
             return;
         }
-        doOneBean(bean);
+        doOneBeanM3u8(bean);
     }
 
-    private void doOneBean(DownBean bean) {
+    private void doOneBeanFile(DownBean bean) {
+        String roomId = bean.getRoomId();
+        FileListVo fileListVo = nginxApiRest.getFileListBy(bean.getPath(), null);
+        DownResult result = null;
+        try {
+            result = DownLoadUtil.downloadFiles(bean.getRoomId(), fileListVo, downUpConfig.getNginxUrl(), downUpConfig.getDownPath());
+        } catch (Exception e) {
+            downFailCounter.incrementAndGet();
+            log.error("----doOneBeanFile--roomId={}，直接从任务移除，需要调用add重新加入方可恢复", roomId);
+            queue.delete(roomId);
+            queue.putErr(roomId);
+            bean.setErrorCount(bean.getErrorCount() + 1);
+            bean.setError("downErr:" + e.getMessage());
+            errorMap.put(roomId, bean);
+        }
+
+        Integer successTsNums = result.getTss().size();
+        Integer totalTsNums = result.getTsNums();
+        bean.setSize(totalTsNums);
+        bean.setDownCount(successTsNums);
+        if (!totalTsNums.equals(successTsNums)) {
+            downFailCounter.incrementAndGet();
+            log.error("roomId={}下载不完全,ts总数{},下载成功数{}", roomId, totalTsNums, successTsNums);
+            queue.putErr(roomId);
+            bean.setErrorCount(bean.getErrorCount() + 1);
+            bean.setError("downFail");
+            errorMap.put(roomId, bean);
+            return;
+        }
+
+        DownBean downBean = queue.get(roomId);
+        boolean isSuccess = false;
+        if (downBean != null) {
+            M3u8FileInfoVo fileInfoVo = new M3u8FileInfoVo();
+            fileInfoVo.setFilePath(fileListVo.getPath());
+            fileInfoVo.setFileCount(successTsNums);
+            isSuccess = callbackOnSuccess(downBean, fileInfoVo);
+        }
+        if (isSuccess) {
+            downSuccessCounter.incrementAndGet();
+            errorMap.remove(roomId);
+            queue.delete(roomId);
+            Long curTime = System.currentTimeMillis();
+            log.info("----doOneBeanFile--finished--roomId={}下载完成，下载数:{}，用时:{}s", roomId, successTsNums, (curTime - bean.getInitTime().getTime()) / 1000);
+        }
+    }
+
+    private void doOneBeanM3u8(DownBean bean) {
         log.info("从队列获取一个下载任务{} {},队列剩余个数{},异常数量堆积{}个", bean.getRoomId(), bean.getUrl(), queue.size(), queue.errSize());
         //先下载原画,然后上传原画成功后,再下载试看的M3u8,再上传试看的资源到阿里
         String roomId = bean.getRoomId();
@@ -251,7 +307,6 @@ public class DownUpService {
      *
      * @param downBean
      * @param fileInfoVo
-     *
      * @author chenjh
      */
     private boolean callbackOnSuccess(DownBean downBean, M3u8FileInfoVo fileInfoVo) {
@@ -358,11 +413,10 @@ public class DownUpService {
             return isOk;
         } catch (HttpException e) {
             log.error("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, e);
-            throw new FailedException("callbackCheck:" + e.getMessage()+","+callbackUrl);
-        }
-        catch (Exception e){
+            throw new FailedException("callbackCheck:" + e.getMessage() + "," + callbackUrl);
+        } catch (Exception e) {
             log.error("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, e);
-            throw new FailedException("callbackCheck:" + e.getMessage()+","+callbackUrl);
+            throw new FailedException("callbackCheck:" + e.getMessage() + "," + callbackUrl);
         }
     }
 
@@ -440,7 +494,7 @@ public class DownUpService {
         return count;
     }
 
-    private void removeFail(String code, String roomId){
+    private void removeFail(String code, String roomId) {
         String errorKey = code + ":" + roomId;
         failCountMap.remove(errorKey);
     }

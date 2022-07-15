@@ -33,7 +33,7 @@ class AvClipUtilTest {
         Long size=DownLoadUtil.getRemoteSize("http://175.178.252.112:81/m3u8/live/wukong/index.m3u8", 3000);
         Assertions.assertTrue(size>0, "size gt 0");
         System.out.println(size);
-        size=DownLoadUtil.getRemoteSize("http://175.178.252.112:81/m3u8/live/12344678/12344678.m3u8", 3000);
+        size=DownLoadUtil.getRemoteSize("http://175.178.252.112:81/m3u8/live/12344678/index.m3u8", 3000);
         System.out.println(size);
         size=DownLoadUtil.getRemoteSize("http://175.178.252.112:81/m3u8/live/12344678/12344678.m3u8", 3000);
         System.out.println(size);

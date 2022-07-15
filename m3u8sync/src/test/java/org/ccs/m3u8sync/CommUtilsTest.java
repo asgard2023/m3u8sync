@@ -19,6 +19,11 @@ class CommUtilsTest {
         Assertions.assertEquals("tryUrl=aaaa&event=test&roomId=123", url, "urlParam");
     }
 
+    void replaceBlank(){
+        String str="03-Jul-2022 08:55    2348";
+
+    }
+
     @Test
     void nvl(){
         String v=(String)CommUtils.nvl(null, "123");

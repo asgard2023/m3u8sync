@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.DownUpConfig;
+import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.downup.service.DownUpService;
@@ -13,13 +14,12 @@ import org.ccs.m3u8sync.exceptions.ParamErrorException;
 import org.ccs.m3u8sync.exceptions.ParamNullException;
 import org.ccs.m3u8sync.exceptions.ResultData;
 import org.ccs.m3u8sync.vo.CallbackVo;
+import org.ccs.m3u8sync.vo.FileListVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.net.URLDecoder;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
 
 /**
  * 下载服务处理
@@ -48,7 +48,7 @@ public class DownUpController {
         if (CharSequenceUtil.isBlank(roomId)) {
             throw new ParamNullException("roomId不能为空");
         }
-        downUpService.doOneBean(roomId);
+        downUpService.doOneBeanM3u8(roomId);
         return ResultData.success();
     }
 
@@ -93,7 +93,8 @@ public class DownUpController {
         }
 
         log.info("----add--roomId={} format={} m3u8Url={}", roomId, format, m3u8Url);
-        DownBean bean = new DownBean(roomId, m3u8Url, roomId, new Date(), callback, 0, 0, null, 0);
+        DownBean bean = new DownBean(roomId, m3u8Url, new Date(), callback);
+        bean.setSyncType(SyncType.M3U8.getType());
         downUpService.addTask(roomId, bean);
         return ResultData.success();
     }
@@ -109,32 +110,89 @@ public class DownUpController {
     @PostMapping("addNginxList")
     public ResultData addNginxList(@RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
             , @RequestParam(value = "path", required = false) String path
+            , @RequestParam(value = "syncType", required = false) String syncType
             , @RequestBody CallbackVo callback) {
+
+        SyncType syncTypeObj = SyncType.M3U8;
+        if (StringUtils.isNotBlank(syncType)) {
+            syncTypeObj = SyncType.parse(syncType);
+            if (syncTypeObj == null) {
+                throw new ParamErrorException("syncType:" + syncType + ",invalid");
+            }
+        }
         //检查一下回调接口是否正常（如果成功只检查一次）
         downUpService.checkCallback("checkCallback", callback);
+        Map<String, Object> resultMap = new TreeMap<>();
+        List<String> errorInfos = new ArrayList<>();
+        if (syncTypeObj == SyncType.M3U8) {
+            FileListVo fileListVo = nginxApiRest.getM3u8List(path);
+            List<String> roomIdList = fileListVo.getFolders();
+            HttpRequest.closeCookie();
+            if (StringUtils.isBlank(format)) {
+                format = downUpConfig.getFormat();
+            }
+            List<String> okList = new ArrayList<>();
+            for (String roomId : roomIdList) {
+                String m3u8Url = downUpConfig.getNginxUrl(roomId, format);
+                //如果是m3u8检查一下文件大小，以确定m3u8Url是否有效
+                Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);
+                if (length == null || length == 0) {
+                    log.warn("----addNginxList--roomId={} m3u8Url={} size={} get fail", roomId, m3u8Url, length);
+                    continue;
+                }
+                try {
+                    DownBean bean = new DownBean(roomId, m3u8Url, new Date(), callback);
+                    bean.setSyncType(syncTypeObj.getType());
+                    bean.setPath(path);
+                    downUpService.addTask(roomId, bean);
+                    okList.add(roomId);
+                } catch (Exception e) {
+                    log.warn("----addNginxList--roomId={} m3u8Url={} err={}", roomId, m3u8Url, e.getMessage());
+                    errorInfos.add(m3u8Url + " " + e.getMessage());
+                }
+            }
+            resultMap.put("roomIdList", roomIdList);
+            resultMap.put("sizeRoom", roomIdList.size());
+            resultMap.put("sizeOk", okList.size());
+            resultMap.put("okList", okList);
+            resultMap.put("errorInfos", errorInfos);
+        } else {
+            addAllNginxFolderForSync(path, callback, syncTypeObj, resultMap, errorInfos);
+        }
+        return ResultData.success(resultMap);
+    }
 
-        List<String> roomIdList = nginxApiRest.getM3u8List(path);
-        HttpRequest.closeCookie();
-        if (StringUtils.isBlank(format)) {
-            format = downUpConfig.getFormat();
-        }
-        List<String> okList = new ArrayList<>();
-        for (String roomId : roomIdList) {
-            String m3u8Url = downUpConfig.getNginxUrl(roomId, format);
-            Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);
-            if (length == null || length == 0) {
-                log.warn("----add--roomId={} m3u8Url={} size={} get fail", roomId, m3u8Url, length);
-                continue;
+    /**
+     * 按path递归找出所有可同步的文件夹加到任务中
+     *
+     * @param path
+     * @param callback
+     * @param syncTypeObj
+     * @param resultMap
+     * @param errorInfos
+     */
+    private void addAllNginxFolderForSync(String path, CallbackVo callback, SyncType syncTypeObj, Map<String, Object> resultMap, List<String> errorInfos) {
+        List<FileListVo> list = new ArrayList<>();
+        //递归查出所有的可同频的目录（可文件夹不管）
+        nginxApiRest.getFileListBy(path, list);
+        int roomIdCount = 0;
+        for (FileListVo fileListVo : list) {
+            String roomId = fileListVo.getPath();
+            if (fileListVo.getFileCount() > 0) {
+                try {
+                    DownBean bean = new DownBean(roomId, null, new Date(), callback);
+                    bean.setSyncType(syncTypeObj.getType());
+                    bean.setPath(fileListVo.getPath());
+                    roomIdCount++;
+                    downUpService.addTask(roomId, bean);
+                } catch (Exception e) {
+                    log.warn("----addNginxList--roomId={} m3u8Url={} err={}", roomId, null, e.getMessage());
+                    errorInfos.add(roomId + " " + e.getMessage());
+                }
             }
-            try {
-                DownBean bean = new DownBean(roomId, m3u8Url, roomId, new Date(), callback, 0, 0, null, 0);
-                downUpService.addTask(roomId, bean);
-                okList.add(roomId);
-            } catch (Exception e) {
-                log.warn("----add--roomId={} m3u8Url={} err={}", roomId, m3u8Url, e.getMessage());
-            }
         }
-        return ResultData.success(okList);
+        resultMap.put("sizeOk", roomIdCount);
+        resultMap.put("errorInfos", errorInfos);
     }
 
     @GetMapping("status")
