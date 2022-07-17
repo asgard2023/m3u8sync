@@ -200,6 +200,7 @@ public class DownUpService {
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downErr:" + e.getMessage());
             errorMap.put(roomId, bean);
+            return;
         }
 
         Integer successTsNums = result.getTss().size();

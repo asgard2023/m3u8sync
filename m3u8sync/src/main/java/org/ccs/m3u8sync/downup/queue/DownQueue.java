@@ -1,10 +1,8 @@
 package org.ccs.m3u8sync.downup.queue;
 
 import cn.hutool.core.collection.CollUtil;
-import cn.hutool.core.collection.CollectionUtil;
-import cn.hutool.core.text.CharSequenceUtil;
-import cn.hutool.core.util.StrUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -34,11 +32,12 @@ public class DownQueue {
      */
     public void put(DownBean downBean){
         String roomId = downBean.getRoomId();
-        if(redisTemplate.boundHashOps(HASH_KEY).hasKey(roomId)){
+        boolean hasRoomId=redisTemplate.opsForHash().hasKey(HASH_KEY, roomId);
+        if(hasRoomId){
             log.info("重复收到下载任务,DownBean={}",downBean);
         }
-        redisTemplate.boundHashOps(HASH_KEY).put(roomId,downBean);
-        redisTemplate.boundListOps(LIST_KEY).rightPush(roomId);
+        redisTemplate.opsForHash().put(HASH_KEY, roomId,downBean);
+        redisTemplate.opsForList().rightPush(LIST_KEY, roomId);
     }
 
 
@@ -48,7 +47,7 @@ public class DownQueue {
      * @return
      */
     public DownBean get(String roomId){
-        return (DownBean) redisTemplate.boundHashOps(HASH_KEY).get(roomId);
+        return (DownBean) redisTemplate.opsForHash().get(HASH_KEY, roomId);
     }
 
     /**
@@ -56,11 +55,11 @@ public class DownQueue {
      * @return
      */
     public DownBean getOne(){
-        String roomId = (String) redisTemplate.boundListOps(LIST_KEY).leftPop();
-        if(CharSequenceUtil.isBlank(roomId)){
+        String roomId = (String) redisTemplate.opsForList().leftPop(LIST_KEY);
+        if(StringUtils.isBlank(roomId)){
             return null;
         }
-        return (DownBean) redisTemplate.boundHashOps(HASH_KEY).get(roomId);
+        return (DownBean) redisTemplate.opsForHash().get(HASH_KEY, roomId);
     }
 
     /**
@@ -71,13 +70,13 @@ public class DownQueue {
         log.info("开始从失败队列迁移到正常队列中");
         int i = 0;
         while(true){
-            String roomId = (String) redisTemplate.boundListOps(ERR_LIST_KEY).leftPop();
-            if(CharSequenceUtil.isBlank(roomId)){
+            String roomId = (String) redisTemplate.opsForList().leftPop(ERR_LIST_KEY);
+            if(StringUtils.isBlank(roomId)){
                 log.info("结束从失败队列迁移到正常队列中,一共迁移{}个",i);
                 break;
             }
             i++;
-            redisTemplate.boundListOps(LIST_KEY).leftPush(roomId);
+            redisTemplate.opsForList().leftPush(LIST_KEY, roomId);
             log.info("roomId={}从异常队列插入到正常队列的头部,以供优先选择",roomId);
         }
     }
@@ -85,15 +84,14 @@ public class DownQueue {
     /**
      * 同步中断的任务,从Hash的长度和queue的size是否一致来判定
      * warn: 该方法不能频繁调度,且不适用海量hash任务时使用
-     * TODO 如果后续部署集群,此处需要修改为分布式锁
      */
     public synchronized void syncBreak(){
-        Long hashSize = redisTemplate.boundHashOps(HASH_KEY).size();
+        Long hashSize = redisTemplate.opsForHash().size(HASH_KEY);
         if(hashSize == 0){
             return;
         }
-        Long listSize =  redisTemplate.boundListOps(LIST_KEY).size();
-        Long errlistSize = redisTemplate.boundListOps(ERR_LIST_KEY).size();
+        Long listSize =  redisTemplate.opsForList().size(LIST_KEY);
+        Long errlistSize = redisTemplate.opsForList().size(ERR_LIST_KEY);
         if(!hashSize.equals (listSize + errlistSize)){
             log.info("检测到有异常中断的任务,任务全集size={},待执行任务size={},失败任务size={}", listSize, errlistSize);
         }
@@ -122,11 +120,11 @@ public class DownQueue {
 
 
     public Long size(){
-        return  redisTemplate.boundListOps(LIST_KEY).size();
+        return  redisTemplate.opsForList().size(LIST_KEY);
     }
 
     public Long errSize(){
-        return  redisTemplate.boundListOps(ERR_LIST_KEY).size();
+        return  redisTemplate.opsForList().size(ERR_LIST_KEY);
     }
 
     public List<String> errors(){
