@@ -18,7 +18,7 @@ public class CommUtils {
     /**
      * 取数据前maxLength位
      *
-     * @param str
+     * @param str string str
      * @param maxLength
      * @return
      */
@@ -57,7 +57,7 @@ public class CommUtils {
     }
 
     /**
-     * @return
+     * @return isStartWith
      */
     public static boolean startWithChar(String str, char ch) {
         if (str == null || str.length() < 1) {
@@ -67,7 +67,7 @@ public class CommUtils {
     }
 
     /**
-     * @return
+     * @return isEndWith
      */
     public static boolean endWithChar(String str, char ch) {
         if (str == null || str.length() < 1) {

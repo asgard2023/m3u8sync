@@ -8,8 +8,8 @@ public class BaseException extends RuntimeException {
      *
      */
     private static final long serialVersionUID = 1L;
-    private String resultCode;
-    private String title = "Error";
+    private final String resultCode;
+    private final String title = "Error";
 
 
     private static final Map<String, String> errorCodeMap;
@@ -39,15 +39,7 @@ public class BaseException extends RuntimeException {
         return resultCode;
     }
 
-    public void setResultCode(String resultCode) {
-        this.resultCode = resultCode;
-    }
-
     public String getTitle() {
         return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
     }
 }

@@ -1,6 +1,9 @@
 package org.ccs.m3u8sync.downup.down;
 
 public class DownConstant {
+    private DownConstant(){
+
+    }
 
     //因子
     public static final float FACTOR = 1.15F;
@@ -26,7 +29,7 @@ public class DownConstant {
     public static final String TS_SOURCE = ".ts";
 
     public static final String M3U8 = ".m3u8";
-    public static final String M3U8_FFmpeg = ".text";
+    public static final String M3U8_FF_MPEG = ".text";
     public static final String MP4= ".mp4";
     public static final String KEY = ".key";
 }

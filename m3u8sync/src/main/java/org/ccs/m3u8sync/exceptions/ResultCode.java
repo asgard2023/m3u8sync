@@ -23,8 +23,8 @@ public enum ResultCode {
     FILE_UNEXIST("100011", "文件不存在"),
     FILE_INVALID("100012", "文件无效"),
     FILE_NORMAL("100013", "文件正常");
-    private String code;
-    private String msg;
+    private final String code;
+    private final String msg;
 
     ResultCode(String code, String msg) {
         this.code = code;
