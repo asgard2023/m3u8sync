@@ -2,10 +2,12 @@ package org.ccs.m3u8sync.controller;
 
 import cn.hutool.core.text.CharSequenceUtil;
 import cn.hutool.http.HttpRequest;
+import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.DownUpConfig;
+import org.ccs.m3u8sync.config.RelayConfiguration;
 import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
@@ -15,6 +17,7 @@ import org.ccs.m3u8sync.exceptions.ParamNullException;
 import org.ccs.m3u8sync.exceptions.ResultData;
 import org.ccs.m3u8sync.vo.CallbackVo;
 import org.ccs.m3u8sync.vo.FileListVo;
+import org.ccs.m3u8sync.vo.M3u8FileInfoVo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +37,8 @@ public class DownUpController {
     private DownUpConfig downUpConfig;
     @Autowired
     private NginxApiRest nginxApiRest;
+    @Autowired
+    private RelayConfiguration relayConfiguration;
 
     /**
      * 重新执行指定房间任务 上传原画对应的试看,并更新CMS平台
@@ -67,9 +72,17 @@ public class DownUpController {
             , @RequestParam(value = "m3u8Url", required = false) String m3u8Url
             , @RequestBody CallbackVo callback) {
 
+        //用于快束检测中继模模式下一节点是否正常（报告给上一节点）
+        if (DownUpService.CHECK_RELAY.equals(roomId) && "test".equals(m3u8Url)) {
+            log.info("----add--roomId={} check ok", roomId);
+            return ResultData.success("ok");
+        }
         if (CharSequenceUtil.isBlank(roomId)) {
             log.warn("----add--roomId={} isBlank", roomId);
             throw new ParamNullException("roomId不能为空");
+        }
+        if(StringUtils.isNotBlank(format)){
+            format=URLDecoder.decode(format);
         }
         if (StringUtils.isBlank(m3u8Url)) {
             m3u8Url = downUpConfig.getNginxUrl(roomId, format);
@@ -83,8 +96,11 @@ public class DownUpController {
             }
         }
 
+
         //检查一下回调接口是否正常（如果成功只检查一次）
-        downUpService.checkCallback("checkCallback", callback);
+        downUpService.checkCallback(DownUpService.CHECK_CALLBACK, callback);
+        //中继模式：检查下一节点是否正常
+        downUpService.checkRelay(DownUpService.CHECK_RELAY);
 
         Long length = DownLoadUtil.getRemoteSize(m3u8Url, 3000);
         if (length == null || length == 0) {
@@ -121,7 +137,9 @@ public class DownUpController {
             }
         }
         //检查一下回调接口是否正常（如果成功只检查一次）
-        downUpService.checkCallback("checkCallback", callback);
+        downUpService.checkCallback(DownUpService.CHECK_CALLBACK, callback);
+        //中继模式：检查下一节点是否正常
+        downUpService.checkRelay(DownUpService.CHECK_RELAY);
         Map<String, Object> resultMap = new TreeMap<>();
         List<String> errorInfos = new ArrayList<>();
         if (syncTypeObj == SyncType.M3U8) {
@@ -207,8 +225,28 @@ public class DownUpController {
      */
     @GetMapping("recover")
     public ResultData recover() {
-        downUpService.recover();
-        return ResultData.success();
+        int count = downUpService.recover();
+        return ResultData.success(count);
     }
 
+    /**
+     * 用于上传成功后回调的接口
+     *
+     * @param roomId
+     * @param fileInfo
+     * @return
+     */
+    @PostMapping("callback/{roomId}")
+    public String callback(@PathVariable(value = "roomId") String roomId, @RequestParam(value = "successDel", required = false) String successDel, @RequestBody M3u8FileInfoVo fileInfo) {
+        //用于快速验证回调接口
+        if (StringUtils.equals("checkCallback", roomId) && StringUtils.equals("test", fileInfo.getFilePath())) {
+            log.info("----callback--roomId={} check ok", roomId);
+            return "ok";
+        }
+        log.info("----callback--roomId={} successDel={} fileInfo={}", roomId, successDel, JSONUtil.toJsonStr(fileInfo));
+        if ("true".equals(successDel)) {
+            downUpService.deleteDown(roomId, fileInfo);
+        }
+        return "ok";
+    }
 }

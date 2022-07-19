@@ -26,9 +26,18 @@ downup:
   expire-hour: 48
 
 callback:
+  open: true
   baseUrl: http://localhost:9291
   paramUrl: m3u8Sync/callback/{roomId}
+
+relay:
+  #中否开启中继模式，本节点下载成功自动通知下一节点，下一节点下载成功，自动回调删除本节点文件
   open: true
+  #用于级联服务，级联下一节点
+  nextM3u8Sync: http://localhost:9293
+  localM3u8Sync: http://localhost:${server.port}
+  #回调成功删除本地文件(down_path+filePath)
+  deleteOnSuccess: true
 
 
 # /info端点信息配置
@@ -40,7 +49,7 @@ info:
 spring:
   redis:
     host: 192.168.1.254
-    database: 0
+    database: 2
     password: ''
     port: 6379
     timeout: 2000

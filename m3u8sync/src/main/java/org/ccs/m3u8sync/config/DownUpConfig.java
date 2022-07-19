@@ -72,7 +72,7 @@ public class DownUpConfig {
      */
     public String getRoomM3u8Path(String roomId, String format) {
         String path=format.replace("{roomId}", roomId).replace("{roomId}", roomId);
-        return CommUtils.appendUrl(getRoomIdFilePath(roomId), path);
+        return CommUtils.appendUrl(this.getDownPath(), path);
     }
 
     /**

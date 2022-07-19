@@ -11,10 +11,12 @@ import cn.hutool.http.HttpUtil;
 import cn.hutool.json.JSONUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.ccs.m3u8sync.client.NextM3u8SyncRest;
 import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.CallbackConfiguration;
 import org.ccs.m3u8sync.config.DownUpConfig;
 import org.ccs.m3u8sync.config.M3u8SyncConfiguration;
+import org.ccs.m3u8sync.config.RelayConfiguration;
 import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
@@ -23,6 +25,7 @@ import org.ccs.m3u8sync.downup.queue.DownQueue;
 import org.ccs.m3u8sync.exceptions.FailedException;
 import org.ccs.m3u8sync.exceptions.FileUnexistException;
 import org.ccs.m3u8sync.exceptions.GlobalExceptionHandler;
+import org.ccs.m3u8sync.exceptions.ResultData;
 import org.ccs.m3u8sync.utils.CommUtils;
 import org.ccs.m3u8sync.vo.CallbackVo;
 import org.ccs.m3u8sync.vo.FileListVo;
@@ -54,6 +57,10 @@ public class DownUpService {
     private CallbackConfiguration callbackConfiguration;
     @Autowired
     private M3u8SyncConfiguration m3u8SyncConfiguration;
+    @Autowired
+    private RelayConfiguration relayConfiguration;
+    @Autowired
+    private NextM3u8SyncRest nextM3u8SyncRest;
     //下载成功数
     private static AtomicInteger downSuccessCounter = new AtomicInteger();
     //下载失败数
@@ -142,12 +149,12 @@ public class DownUpService {
                         continue;
                     }
                     Long curTime = System.currentTimeMillis();
-                    Long timeHour = (curTime - bean.getInitTime().getTime()) / 3600000;
+                    Long timeHourExpire = bean.getInitTime().getTime() + 3600000 * downUpConfig.getExpireHour();
                     String roomId = bean.getRoomId();
-                    //如果任务超过过期时间，则删除任务，不执行
-                    if (timeHour > downUpConfig.getExpireHour()) {
+                    //如果任务超过过期时间，则删除任务，不执行，超时移除任务
+                    if (timeHourExpire < curTime) {
                         queue.delete(roomId);
-                        log.warn("----doTask--roomId={} expireHour={} expired, remove task", roomId, timeHour);
+                        log.warn("----doTask--roomId={} initTime={} expireHour={} expired, remove task", roomId, bean.getInitTime(), downUpConfig.getExpireHour());
                         continue;
                     }
                     if (SyncType.M3U8.getType().equals(bean.getSyncType())) {
@@ -165,13 +172,13 @@ public class DownUpService {
      * 恢复的做法是, 将异常队列的任务,塞在正常队列的尾部, 以使其与正常产生任务交叉执行.
      * 正常业务依然享有优先执行权
      */
-    public void recover() {
+    public int recover() {
         if (checkDownupNotOpen()) {
-            return;
+            return 0;
         }
         long errSize = queue.errSize();
         log.info("开始迁移异常下载队列,队列总容量为{}", errSize);
-        queue.moveErr();
+        return queue.moveErr();
     }
 
     public void doOneBeanM3u8(String roomId) {
@@ -223,7 +230,11 @@ public class DownUpService {
             M3u8FileInfoVo fileInfoVo = new M3u8FileInfoVo();
             fileInfoVo.setFilePath(fileListVo.getPath());
             fileInfoVo.setFileCount(successTsNums);
-            isSuccess = callbackOnSuccess(downBean, fileInfoVo);
+            if (relayConfiguration.isOpen()) {
+                isSuccess = relayOnSuccess(downBean, fileInfoVo);
+            } else {
+                isSuccess = callbackOnSuccess(downBean, fileInfoVo);
+            }
         }
         if (isSuccess) {
             downSuccessCounter.incrementAndGet();
@@ -231,6 +242,35 @@ public class DownUpService {
             queue.delete(roomId);
             Long curTime = System.currentTimeMillis();
             log.info("----doOneBeanFile--finished--roomId={}下载完成，下载数:{}，用时:{}s", roomId, successTsNums, (curTime - bean.getInitTime().getTime()) / 1000);
+        }
+    }
+
+    /**
+     * 用于中继完成自动删除，即回调删除
+     *
+     * @param roomId
+     * @param fileInfo
+     */
+    public void deleteDown(String roomId, M3u8FileInfoVo fileInfo) {
+        if (fileInfo == null && StringUtils.isBlank(fileInfo.getFilePath())) {
+            log.warn("----deleteDown--roomId={} fileInfo invalid", roomId);
+            return;
+        }
+        String path = null;
+        //文件模式
+        if (fileInfo.getFilePath().endsWith(roomId + "/")) {
+            path = CommUtils.appendUrl(downUpConfig.getDownPath(), fileInfo.getFilePath());
+
+        }
+        //m3u8模式
+        else {
+            if (fileInfo.getFilePath().endsWith(".m3u8")) {
+                path = CommUtils.appendUrl(downUpConfig.getDownPath(), roomId);
+            }
+        }
+        if (path != null) {
+            boolean isDelete = FileUtil.del(path);
+            log.info("----deleteDown--roomId={} path={} isDelete={}", roomId, path, isDelete);
         }
     }
 
@@ -292,7 +332,11 @@ public class DownUpService {
             M3u8FileInfoVo fileInfoVo = new M3u8FileInfoVo();
             fileInfoVo.setFilePath(m3u8Path);
             fileInfoVo.setFileCount(successTsNums);
-            isSuccess = callbackOnSuccess(downBean, fileInfoVo);
+            if (relayConfiguration.isOpen()) {
+                isSuccess = relayOnSuccess(downBean, fileInfoVo);
+            } else {
+                isSuccess = callbackOnSuccess(downBean, fileInfoVo);
+            }
         }
         if (isSuccess) {
             downSuccessCounter.incrementAndGet();
@@ -356,6 +400,40 @@ public class DownUpService {
         return isSuccess;
     }
 
+    /**
+     * 同步下载完成后中续下一接口
+     *
+     * @param downBean
+     * @param fileInfoVo
+     * @author chenjh
+     */
+    private boolean relayOnSuccess(DownBean downBean, M3u8FileInfoVo fileInfoVo) {
+        boolean open = relayConfiguration.isOpen();
+        String roomId = downBean.getRoomId();
+
+        //如果不用回调，则直接通过
+        if (!open) {
+            return true;
+        }
+
+        boolean isSuccess = false;
+
+        try {
+            ResultData resultData = nextM3u8SyncRest.addSync(roomId, null, null, downBean.getCallback());
+            isSuccess = resultData.getSuccess();
+        } catch (HttpException e) {
+            callbackFailCounter.incrementAndGet();
+            downBean.setError("callbackErr:" + e.getMessage());
+            log.error("----relayOnSuccess--roomId={}", roomId, e);
+            //如果回调失败，可以重试3次
+            Integer count = failCount("relayOnSuccess", roomId);
+            if (count <= RETRY_COUNT) {
+                return relayOnSuccess(downBean, fileInfoVo);
+            }
+        }
+        return isSuccess;
+    }
+
     private String getCallbackUrl(String roomId, CallbackVo callback) {
         //优先用户传的baseUrl
         String baseUrl = (String) CommUtils.nvl(callback.getBaseUrl(), callbackConfiguration.getBaseUrl());
@@ -370,6 +448,9 @@ public class DownUpService {
 
     private Map<String, String> callbackCheckMap = new ConcurrentHashMap<>();
 
+    public static final String CHECK_CALLBACK = "checkCallback";
+    public static final String CHECK_RELAY = "checkRelay";
+
     /**
      * 每个新的回调接口检查一下回调接口的有效性，如果成功只检查一次
      * 以免接口无效任务执行完真的开始回调时发现接口不可用。
@@ -382,6 +463,7 @@ public class DownUpService {
     public boolean checkCallback(String roomId, CallbackVo callback) {
         String callbackUrl = this.getCallbackUrl(roomId, callback);
         boolean isOk = false;
+        String checkCallbackCode = CHECK_CALLBACK + ":";
         try {
             //如果开关未开启，不用检查，直接通过
             if (!downUpConfig.isOpen()) {
@@ -406,18 +488,68 @@ public class DownUpService {
                 String responseContent = response.body();
                 isOk = isCallBackOk(responseContent);
                 if (!isOk) {
-                    log.warn("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, responseContent);
-                    throw new FailedException("callbackCheck:" + responseContent + " invalid (need:ok)");
+                    log.warn("------checkCallback-roomId={} callbackUrl={} response={}", roomId, callbackUrl, responseContent);
+                    throw new FailedException(checkCallbackCode + responseContent + " invalid (need:ok)");
                 }
                 callbackCheckMap.put(baseUrl, responseContent);
             }
             return isOk;
         } catch (HttpException e) {
-            log.error("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, e);
-            throw new FailedException("callbackCheck:" + e.getMessage() + "," + callbackUrl);
+            log.error("------checkCallback-roomId={} callbackUrl={}", roomId, callbackUrl, e);
+            throw new FailedException(checkCallbackCode + e.getMessage() + "," + callbackUrl);
         } catch (Exception e) {
-            log.error("------checkCallback-roomId={} callbackUrl={} response", roomId, callbackUrl, e);
-            throw new FailedException("callbackCheck:" + e.getMessage() + "," + callbackUrl);
+            log.error("------checkCallback-roomId={} callbackUrl={}", roomId, callbackUrl, e);
+            throw new FailedException(checkCallbackCode + e.getMessage() + "," + callbackUrl);
+        }
+    }
+
+    /**
+     * 中继模式：检查下一节点是否正常
+     *
+     * @param roomId
+     * @return
+     * @author chenjh
+     */
+    public boolean checkRelay(String roomId) {
+        String nextM3u8Sync = this.relayConfiguration.getNextM3u8Sync();
+        boolean isOk = false;
+        final String checkRelayCode = CHECK_RELAY + ":";
+        try {
+            //如果开关未开启，不用检查，直接通过
+            if (!relayConfiguration.isOpen()) {
+                return true;
+            }
+            //用baseUrl当key，作用是，每个新的回调接口检查一次
+            String baseUrl = nextM3u8Sync;
+            String result = callbackCheckMap.get(baseUrl);
+            if (isCallBackOk(result)) {
+                return true;
+            }
+            synchronized (baseUrl.intern()) {
+                result = callbackCheckMap.get(baseUrl);
+                if (isCallBackOk(result)) {
+                    return true;
+                }
+                log.info("----checkRelay--roomId={} nextM3u8Sync={}", roomId, nextM3u8Sync);
+                CallbackVo callback=new CallbackVo();
+                callback.setBaseUrl(callbackConfiguration.getBaseUrl());
+                callback.setParamUrl(callbackConfiguration.getParamUrl());
+                ResultData resultData = nextM3u8SyncRest.addSync(roomId, "test", "test", callback);
+                String responseContent = (String) resultData.getData();
+                isOk = isCallBackOk(responseContent);
+                if (!isOk) {
+                    log.warn("------checkRelay-roomId={} nextM3u8Sync={} response={}", roomId, nextM3u8Sync, responseContent);
+                    throw new FailedException(checkRelayCode + responseContent + " invalid (need:ok)");
+                }
+                callbackCheckMap.put(baseUrl, responseContent);
+            }
+            return isOk;
+        } catch (HttpException e) {
+            log.error("------checkRelay-roomId={} nextM3u8Sync={}", roomId, nextM3u8Sync, e);
+            throw new FailedException(checkRelayCode + e.getMessage() + "," + nextM3u8Sync);
+        } catch (Exception e) {
+            log.error("------checkRelay-roomId={} nextM3u8Sync={}", roomId, nextM3u8Sync, e);
+            throw new FailedException(checkRelayCode + e.getMessage() + "," + nextM3u8Sync);
         }
     }
 
@@ -465,6 +597,7 @@ public class DownUpService {
         if (isAll || "config".equals(type)) {
             treeMap.put("downUpConfig", downUpConfig);
             treeMap.put("callbackConfig", callbackConfiguration);
+            treeMap.put("relayConfig", relayConfiguration);
         }
         return treeMap;
     }

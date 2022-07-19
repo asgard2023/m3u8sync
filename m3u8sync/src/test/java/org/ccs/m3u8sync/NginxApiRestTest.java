@@ -6,29 +6,27 @@ import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.DownUpConfig;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.vo.FileListVo;
-import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@RunWith(SpringRunner.class)
+
 @SpringBootTest(classes = M3u8SyncApplication.class)
 @ActiveProfiles(value = "test")
 @Slf4j
-public class NginxApiRestTest {
+class NginxApiRestTest {
     @Autowired
     private NginxApiRest nginxApiRest;
     @Autowired
     private DownUpConfig downUpConfig;
 
     @Test
-    public void getM3u8List() {
+    void getM3u8List() {
         FileListVo fileListVo = nginxApiRest.getM3u8List("live");
         List<String> roomIdList = fileListVo.getFolders();
         List<String> okList = new ArrayList<>();
@@ -49,9 +47,8 @@ public class NginxApiRestTest {
     }
 
 
-
     @Test
-    public void getAllFileList() {
+    void getAllFileList() {
         List<FileListVo> list = new ArrayList<>();
         this.nginxApiRest.getFileListBy(null, list);
         System.out.println(JSON.toJSON(list));

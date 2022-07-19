@@ -1,5 +1,7 @@
 package org.ccs.m3u8sync;
 
+import cn.hutool.core.io.FileUtil;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -32,6 +34,17 @@ class FileUtilsTest {
         for (String name : names) {
             System.out.println("fileName=" + name);
         }
+    }
+
+    @Test
+    public void del(){
+        String path = "D:\\app\\maoyun\\dirTest";
+        FileUtil.mkParentDirs(path);
+        FileUtil.writeBytes("aaa".getBytes(), new File(path+"\\test.txt"));
+
+        boolean isDel=FileUtil.del(path);
+        System.out.println("---path="+path+" isDel="+isDel);
+        Assertions.assertFalse(FileUtil.exist(path), "file unexist");
     }
 
 

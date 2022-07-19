@@ -66,7 +66,7 @@ public class DownQueue {
      * 移动所有失败的任务到正常队列头部
      * @return
      */
-    public void moveErr(){
+    public int moveErr(){
         log.info("开始从失败队列迁移到正常队列中");
         int i = 0;
         while(true){
@@ -79,6 +79,7 @@ public class DownQueue {
             redisTemplate.opsForList().leftPush(LIST_KEY, roomId);
             log.info("roomId={}从异常队列插入到正常队列的头部,以供优先选择",roomId);
         }
+        return i;
     }
 
     /**
