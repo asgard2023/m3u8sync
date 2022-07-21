@@ -25,7 +25,7 @@ public class NextM3u8SyncRestTest {
         CallbackVo callback = new CallbackVo();
         callback.setBaseUrl(callbackConfiguration.getBaseUrl());
         callback.setParamUrl(callbackConfiguration.getParamUrl());
-        ResultData resultData = nextM3u8SyncRest.addSync(DownUpService.CHECK_RELAY, "test", "test", callback);
+        ResultData resultData = nextM3u8SyncRest.addSync(DownUpService.CHECK_RELAY, "test", "test", 0, callback);
         System.out.println(resultData.getResultCode() + " " + resultData.getData());
     }
 }

@@ -60,16 +60,18 @@ public class DownUpController {
     /**
      * 添加m3u8下载任务
      *
-     * @param roomId   m3u8房间id
-     * @param format   url中roomId组成的格式
-     * @param m3u8Url  直接m3u8Url，不用拼接生成
-     * @param callback 回调接口
+     * @param roomId         m3u8房间id
+     * @param format         url中roomId组成的格式
+     * @param m3u8Url        直接m3u8Url，不用拼接生成
+     * @param ifRelayCallDel 用于表示上个接点是中继且希望下载完成后，回调callbackDel接口，以删除上个节点的文件
+     * @param callback       回调接口
      * @return
      */
     @PostMapping("add")
     public ResultData add(@RequestParam("roomId") String roomId
             , @RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
             , @RequestParam(value = "m3u8Url", required = false) String m3u8Url
+            , @RequestParam(value = "ifRelayCallDel", required = false, defaultValue = "0") Integer ifRelayCallDel
             , @RequestBody CallbackVo callback) {
 
         //用于快束检测中继模模式下一节点是否正常（报告给上一节点）
@@ -81,8 +83,8 @@ public class DownUpController {
             log.warn("----add--roomId={} isBlank", roomId);
             throw new ParamNullException("roomId不能为空");
         }
-        if(StringUtils.isNotBlank(format)){
-            format=URLDecoder.decode(format);
+        if (StringUtils.isNotBlank(format)) {
+            format = URLDecoder.decode(format);
         }
         if (StringUtils.isBlank(m3u8Url)) {
             m3u8Url = downUpConfig.getNginxUrl(roomId, format);
@@ -111,6 +113,7 @@ public class DownUpController {
         log.info("----add--roomId={} format={} m3u8Url={}", roomId, format, m3u8Url);
         DownBean bean = new DownBean(roomId, m3u8Url, new Date(), callback);
         bean.setSyncType(SyncType.M3U8.getType());
+        bean.setIfRelayCallDel(ifRelayCallDel);
         downUpService.addTask(roomId, bean);
         return ResultData.success();
     }
@@ -236,14 +239,14 @@ public class DownUpController {
      * @param fileInfo
      * @return
      */
-    @PostMapping("callback/{roomId}")
-    public String callback(@PathVariable(value = "roomId") String roomId, @RequestParam(value = "successDel", required = false) String successDel, @RequestBody M3u8FileInfoVo fileInfo) {
+    @PostMapping("callbackDel/{roomId}")
+    public String callbackDel(@PathVariable(value = "roomId") String roomId, @RequestParam(value = "successDel", required = false) String successDel, @RequestBody M3u8FileInfoVo fileInfo) {
         //用于快速验证回调接口
-        if (StringUtils.equals("checkCallback", roomId) && StringUtils.equals("test", fileInfo.getFilePath())) {
-            log.info("----callback--roomId={} check ok", roomId);
+        if (StringUtils.equals("checkCallbackDel", roomId) && StringUtils.equals("test", fileInfo.getFilePath())) {
+            log.info("----callbackDel--roomId={} check ok", roomId);
             return "ok";
         }
-        log.info("----callback--roomId={} successDel={} fileInfo={}", roomId, successDel, JSONUtil.toJsonStr(fileInfo));
+        log.info("----callbackDel--roomId={} successDel={} fileInfo={}", roomId, successDel, JSONUtil.toJsonStr(fileInfo));
         if ("true".equals(successDel)) {
             downUpService.deleteDown(roomId, fileInfo);
         }

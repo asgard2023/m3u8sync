@@ -14,8 +14,6 @@
     <description>Sync m3u8 from nginx</description>
     <properties>
         <java.version>1.8</java.version>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
         <skipTests>true</skipTests>
     </properties>
     <dependencies>

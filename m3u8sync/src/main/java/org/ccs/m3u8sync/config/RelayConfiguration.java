@@ -19,12 +19,12 @@ public class RelayConfiguration {
      */
     private String localM3u8Sync;
     /**
-     * 是否开启下载任务
+     * 是否开启中继模式
      */
     private boolean open = false;
 
     /**
-     * 下载完成通知删除原服务的文件
+     * 用于中继开始时，通知下节点下载完成，回调callbackDel删除本节点的文件
      */
-    private boolean deleteOnSuccess=false;
+    private boolean deleteOnSuccess = false;
 }

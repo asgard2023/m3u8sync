@@ -419,8 +419,16 @@ public class DownUpService {
         boolean isSuccess = false;
 
         try {
-            ResultData resultData = nextM3u8SyncRest.addSync(roomId, null, null, downBean.getCallback());
+            Integer ifRelayCallDel = 0;
+            if (relayConfiguration.isDeleteOnSuccess()) {
+                ifRelayCallDel = 1;
+            }
+            ResultData resultData = nextM3u8SyncRest.addSync(roomId, null, null, ifRelayCallDel, downBean.getCallback());
             isSuccess = resultData.getSuccess();
+
+            if (downBean.getIfRelayCallDel() == 1) {
+                nextM3u8SyncRest.callbackDel(roomId, "true", fileInfoVo);
+            }
         } catch (HttpException e) {
             callbackFailCounter.incrementAndGet();
             downBean.setError("callbackErr:" + e.getMessage());
@@ -531,10 +539,10 @@ public class DownUpService {
                     return true;
                 }
                 log.info("----checkRelay--roomId={} nextM3u8Sync={}", roomId, nextM3u8Sync);
-                CallbackVo callback=new CallbackVo();
+                CallbackVo callback = new CallbackVo();
                 callback.setBaseUrl(callbackConfiguration.getBaseUrl());
                 callback.setParamUrl(callbackConfiguration.getParamUrl());
-                ResultData resultData = nextM3u8SyncRest.addSync(roomId, "test", "test", callback);
+                ResultData resultData = nextM3u8SyncRest.addSync(roomId, "test", "test", 0, callback);
                 String responseContent = (String) resultData.getData();
                 isOk = isCallBackOk(responseContent);
                 if (!isOk) {

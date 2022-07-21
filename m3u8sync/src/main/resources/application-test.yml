@@ -36,7 +36,7 @@ relay:
   #用于级联服务，级联下一节点
   nextM3u8Sync: http://localhost:9293
   localM3u8Sync: http://localhost:${server.port}
-  #回调成功删除本地文件(down_path+filePath)
+  #用于中继开始时，通知下节点下载完成，回调callbackDel删除本节点的文件(down_path+filePath)
   deleteOnSuccess: true
 
 

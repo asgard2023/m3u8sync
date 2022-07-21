@@ -25,7 +25,6 @@ public class DownBean implements Serializable {
     private String roomId;
     private String url;
     private String path;
-//    private String title;
     private Date initTime;
     private CallbackVo callback;
     private Integer size;
@@ -36,4 +35,5 @@ public class DownBean implements Serializable {
      * 同步类型(m3u8/file)
      */
     private String syncType;
+    private Integer ifRelayCallDel=0;
 }

@@ -33,10 +33,12 @@ callback:
 relay:
   #中否开启中继模式，本节点下载成功自动通知下一节点，下一节点下载成功，自动回调删除本节点文件
   open: false
+  #如果是最后的节点，可同时进行回调
+  callback: false
   #用于级联服务，级联下一节点
   nextM3u8Sync: http://localhost:9293
   localM3u8Sync: http://localhost:${server.port}
-  #回调成功删除本地文件
+  #用于中继开始时，通知下节点下载完成，回调callbackDel删除本节点的文件
   deleteOnSuccess: true
 
 
