@@ -24,6 +24,7 @@ public class DownBean implements Serializable {
 
     private String roomId;
     private String url;
+    private String format;
     private String path;
     private Date initTime;
     private CallbackVo callback;

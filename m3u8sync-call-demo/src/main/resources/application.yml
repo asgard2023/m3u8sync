@@ -8,6 +8,6 @@ spring:
     active: dev
 
 m3u8async:
-  apiUrl: http://localhost:9290/
-  callbackUrl: http://localhost:9291/
+  apiUrl: http://192.168.2.131:9290/
+  callbackUrl: http://192.168.2.154:9291/
   callParamUrl: m3u8Sync/callback/{roomId}

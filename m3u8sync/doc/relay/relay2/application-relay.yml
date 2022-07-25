@@ -31,9 +31,10 @@ callback:
   paramUrl: m3u8Sync/callback/{roomId}
 
 relay:
+  code: relay2
   #中否开启中继模式，本节点下载成功自动通知下一节点，下一节点下载成功，自动回调删除本节点文件
-  open: false
-  relayNiginx:
+  open: true
+  relayNiginx: http://relay2:9200
   #用于级联服务，级联下一节点
   nextM3u8Sync: http://localhost:9293
   localM3u8Sync: http://localhost:${server.port}

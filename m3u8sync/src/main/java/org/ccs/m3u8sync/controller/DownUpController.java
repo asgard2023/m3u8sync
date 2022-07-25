@@ -114,6 +114,7 @@ public class DownUpController {
         DownBean bean = new DownBean(roomId, m3u8Url, new Date(), callback);
         bean.setSyncType(SyncType.M3U8.getType());
         bean.setIfRelayCallDel(ifRelayCallDel);
+        bean.setFormat(format);
         downUpService.addTask(roomId, bean);
         return ResultData.success();
     }
@@ -165,6 +166,7 @@ public class DownUpController {
                     DownBean bean = new DownBean(roomId, m3u8Url, new Date(), callback);
                     bean.setSyncType(syncTypeObj.getType());
                     bean.setPath(path);
+                    bean.setFormat(format);
                     downUpService.addTask(roomId, bean);
                     okList.add(roomId);
                 } catch (Exception e) {

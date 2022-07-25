@@ -252,7 +252,7 @@ public class DownUpService {
      * @param fileInfo
      */
     public void deleteDown(String roomId, M3u8FileInfoVo fileInfo) {
-        if (fileInfo == null && StringUtils.isBlank(fileInfo.getFilePath())) {
+        if (fileInfo == null || StringUtils.isBlank(fileInfo.getFilePath())) {
             log.warn("----deleteDown--roomId={} fileInfo invalid", roomId);
             return;
         }
@@ -423,7 +423,12 @@ public class DownUpService {
             if (relayConfiguration.isDeleteOnSuccess()) {
                 ifRelayCallDel = 1;
             }
-            ResultData resultData = nextM3u8SyncRest.addSync(roomId, null, null, ifRelayCallDel, downBean.getCallback());
+            String url = downBean.getUrl();
+            String baseUrl=CommUtils.getBaseUrl(url);
+            //把下载地址换成relayNginx的网址
+            url=url.replace(baseUrl, relayConfiguration.getRelayNiginx());
+
+            ResultData resultData = nextM3u8SyncRest.addSync(roomId, downBean.getFormat(), url, ifRelayCallDel, downBean.getCallback());
             isSuccess = resultData.getSuccess();
 
             if (downBean.getIfRelayCallDel() == 1) {

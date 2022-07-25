@@ -9,6 +9,14 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "relay")
 @Data
 public class RelayConfiguration {
+    /**
+     * 是否开启中继模式
+     */
+    private boolean open = false;
+
+    private String code;
+
+    private String relayNiginx="http://localhost:9200";
 
     /**
      * 用于级联服务，级联下一节点
@@ -18,10 +26,7 @@ public class RelayConfiguration {
      * 本机服务，用于下一节点同步完成回调
      */
     private String localM3u8Sync;
-    /**
-     * 是否开启中继模式
-     */
-    private boolean open = false;
+
 
     /**
      * 用于中继开始时，通知下节点下载完成，回调callbackDel删除本节点的文件
