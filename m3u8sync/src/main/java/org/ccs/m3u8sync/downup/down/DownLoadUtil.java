@@ -11,6 +11,7 @@ import cn.hutool.http.HttpRequest;
 import cn.hutool.http.HttpResponse;
 import cn.hutool.http.HttpUtil;
 import lombok.extern.slf4j.Slf4j;
+import org.ccs.m3u8sync.downup.domain.DownErrorInfoVo;
 import org.ccs.m3u8sync.exceptions.FileUnexistException;
 import org.ccs.m3u8sync.utils.CommUtils;
 import org.ccs.m3u8sync.vo.FileInfoVo;
@@ -30,6 +31,7 @@ import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -178,16 +180,17 @@ public class DownLoadUtil {
         return tsUrl.substring(0, param);
     }
 
-    public static DownResult downloadM3u8NoException(String roomId, String m3u8Url, File destFile, boolean reM3u8) {
+    public static DownResult downloadM3u8NoException(String roomId, String m3u8Url, File destFile, boolean reM3u8, DownErrorInfoVo downErrorInfoVo) {
         try {
-            return downloadM3u8(roomId, m3u8Url, destFile, reM3u8);
+            return downloadM3u8(roomId, m3u8Url, destFile, reM3u8, downErrorInfoVo);
         } catch (Exception e) {
             log.error("downloadM3u8NoException--roomId={} m3u8Url={},下载失败,e={}", roomId, m3u8Url, e.getMessage());
+            downErrorInfoVo.getErrorMap().put(m3u8Url, e.getMessage());
             return null;
         }
     }
 
-    public static DownResult downloadFiles(final String roomId, final FileListVo fileListVo, final String nginxUrl, final String downPath){
+    public static DownResult downloadFiles(final String roomId, final FileListVo fileListVo, final String nginxUrl, final String downPath, DownErrorInfoVo downErrorInfoVo){
         List<String> tsUrls=new ArrayList<>();
         for(FileInfoVo fileInfoVo: fileListVo.getFiles()){
             String url= CommUtils.appendUrl(nginxUrl, fileListVo.getPath());
@@ -201,7 +204,7 @@ public class DownLoadUtil {
         String deseFilePath=CommUtils.appendUrl(destPath, "test.txt");
         File destFile = FileUtil.file(deseFilePath);
         //下载所有的ts,并返回ts目录
-        List<String> successLines = DownLoadUtil.downTsByThread(roomId, destFile, null, tsUrls);
+        List<String> successLines = DownLoadUtil.downTsByThread(roomId, destFile, null, tsUrls, downErrorInfoVo);
         return new DownResult(destFile, tsUrls.size(), successLines);
     }
 
@@ -212,13 +215,14 @@ public class DownLoadUtil {
      * @param destFile 本地保存的m3u8文件
      * @param reM3u8   是否重建本地m3u8
      */
-    public static DownResult downloadM3u8(String roomId, String m3u8Url, File destFile, boolean reM3u8) {
+    public static DownResult downloadM3u8(String roomId, String m3u8Url, File destFile, boolean reM3u8, DownErrorInfoVo downErrorInfoVo) {
         log.info("downloadM3u8--roomId={} m3u8Url={},下载文件路径={}", roomId, m3u8Url, destFile.getAbsolutePath());
         File file;
         try {
             file = HttpUtil.downloadFileFromUrl(m3u8Url, destFile, threadDownloadExpire * 1000);
         } catch (Exception e) {
             log.error("roomId={} m3u8Url={},下载失败,e={}", roomId, m3u8Url, e.getMessage());
+            downErrorInfoVo.getErrorMap().put(m3u8Url, e.getMessage());
             throw new FileUnexistException(e.getMessage());
         }
         List<String> lines = FileUtil.readLines(file, StandardCharsets.UTF_8);
@@ -229,7 +233,7 @@ public class DownLoadUtil {
             //嵌套m3u8递归处理
             if (line.contains(".m3u8")) {
                 log.info("嵌套m3u8解析,并重新下载,m3u8={},line={}", m3u8Url, line);
-                downloadM3u8NoException(roomId, parseUrl(m3u8Url, line), destFile, reM3u8);
+                downloadM3u8NoException(roomId, parseUrl(m3u8Url, line), destFile, reM3u8, downErrorInfoVo);
                 break;
             }
             //多码率处理
@@ -237,7 +241,7 @@ public class DownLoadUtil {
                 //用下一个链接替换s,虽然不一定是高清的,但
                 String newM3u8Url = lines.get(++i);
                 log.info("多码率文件提供,选择首个码率进行下载,m3u8={},line={},newM3u8={}", m3u8Url, line, newM3u8Url);
-                downloadM3u8NoException(roomId, parseUrl(m3u8Url, newM3u8Url), destFile, reM3u8);
+                downloadM3u8NoException(roomId, parseUrl(m3u8Url, newM3u8Url), destFile, reM3u8, downErrorInfoVo);
                 break;
             }
             //解析key,iv
@@ -256,7 +260,7 @@ public class DownLoadUtil {
             }
         }
         //下载所有的ts,并返回ts目录
-        List<String> successLines = downTsByThread(roomId, file, tsKey, tsUrls);
+        List<String> successLines = downTsByThread(roomId, file, tsKey, tsUrls, downErrorInfoVo);
         //重新编排m3u8
         if (reM3u8) {
             resetM3u8BySuccessTs(m3u8Url, file, lines, successLines);
@@ -302,21 +306,25 @@ public class DownLoadUtil {
      * @param tsUrls
      * @return
      */
-    private static List<String> downTsByThread(String roomId, File m3u8File, TsKey tsKey, List<String> tsUrls) {
-        Map<Integer, String> successLineMap = new ConcurrentHashMap<>();
+    private static List<String> downTsByThread(String roomId, File m3u8File, TsKey tsKey, List<String> tsUrls, DownErrorInfoVo downErrorInfoVo) {
+
         int totalSize = tsUrls.size();
+        downErrorInfoVo.setTotalTsNums(totalSize);
         ArrayBlockingQueue<String> task = m3u8TsToQueueTask(tsUrls);
 
-        // 这两个需要注意线程安全
-        List<String> successLines = new Vector<>();
-        List<String> errUrls = new Vector<>();
+
+
+        //需要注意线程安全
+        downErrorInfoVo.setSuccessLineMap(new ConcurrentHashMap<>());
+        downErrorInfoVo.setSuccessLines(new Vector<>());
+        downErrorInfoVo.setErrUrls(new Vector<>());
         //运行下载线程
-        runTaskDownThread(roomId, m3u8File, tsKey, successLineMap, task, successLines, errUrls);
+        runTaskDownThread(roomId, m3u8File, tsKey, task, downErrorInfoVo);
         //显示线程下载进度，如果下载未完成就休眠等待
-        showWaitDownProcess(roomId, m3u8File, totalSize, successLines, errUrls);
+        showWaitDownProcess(roomId, m3u8File, totalSize, downErrorInfoVo);
         //增加task的强移除, 确保分线程能够正常退出
         task.clear();
-        return MapUtil.sort(successLineMap).values().stream().collect(Collectors.toList());
+        return MapUtil.sort(downErrorInfoVo.getSuccessLineMap()).values().stream().collect(Collectors.toList());
     }
 
     /**
@@ -324,22 +332,23 @@ public class DownLoadUtil {
      *
      * @param m3u8File
      * @param totalSize
-     * @param successLines
-     * @param errUrls
      */
-    private static void showWaitDownProcess(String roomId, File m3u8File, int totalSize, List<String> successLines, List<String> errUrls) {
+    private static void showWaitDownProcess(String roomId, File m3u8File, int totalSize, DownErrorInfoVo downErrorInfoVo) {
         //阻塞并监听当前进度
         int totalWaitTimes = 5;
         int initWaitTimes = 0;
         String fileName = m3u8File.getName();
         int oldSuccessSize = 0;
         int sleepTime = threadDownloadExpire * 1000;
+        List<String> successLines=downErrorInfoVo.getSuccessLines();
+        List<String> errUrls=downErrorInfoVo.getErrUrls();
         //这里是单线程循环
         while (true) {
             ThreadUtil.sleep(sleepTime);
             //这里读取size, 将导致errUrls和successLines 线程不安全
             int errSize = errUrls.size();
             int successSize = successLines.size();
+            downErrorInfoVo.setSuccessTsNums(successSize);
             log.info("检测任务roomId={} fileName={},执行进度,失败数/成功下载/总数: {}/{}/{} ,异常监听次数:{}(与上次检测时成功数没变化异常监听次数+1)", roomId, fileName, errSize, successSize, totalSize, initWaitTimes);
             if ((successSize + errSize) == totalSize || initWaitTimes >= totalWaitTimes) {
                 if (successSize == totalSize) {
@@ -363,10 +372,11 @@ public class DownLoadUtil {
         }
         int errSize = errUrls.size();
         int successSize = successLines.size();
+        downErrorInfoVo.setSuccessTsNums(successSize);
         log.info("下载任务{}已结束, 失败数/成功下载/总数: {}/{}/{}", fileName, errSize, successSize, totalSize);
     }
 
-    private static final String separator = "__";
+    private static final String SEPARATOR = "__";
 
     /**
      * m3u8 ts转成队列
@@ -380,7 +390,7 @@ public class DownLoadUtil {
             String tsUrl = tsUrls.get(i);
             try {
                 //将链接原顺序加入到信息栏位中
-                task.put(i + separator + tsUrl);
+                task.put(i + SEPARATOR + tsUrl);
             } catch (InterruptedException e) {
                 log.error("任务队列添加失败,e={}", e.getMessage());
             }
@@ -393,23 +403,24 @@ public class DownLoadUtil {
      *
      * @param m3u8File
      * @param tsKey
-     * @param successLineMap
      * @param task
-     * @param successLines
-     * @param errUrls
      */
-    private static void runTaskDownThread(final String roomId, File m3u8File, TsKey tsKey, Map<Integer, String> successLineMap, ArrayBlockingQueue<String> task, List<String> successLines, List<String> errUrls) {
+    private static void runTaskDownThread(final String roomId, File m3u8File, TsKey tsKey, ArrayBlockingQueue<String> task, DownErrorInfoVo downErrorInfoVo) {
         //失败的链接的索引
-        Set<String> errIndexs = new ConcurrentHashSet<>();
+        final Set<String> errIndexs = new ConcurrentHashSet<>();
+        final Map<Integer, String> successLineMap=downErrorInfoVo.getSuccessLineMap();
+        final List<String> successLines=downErrorInfoVo.getSuccessLines();
+        final List<String> errUrls=downErrorInfoVo.getErrUrls();
         for (int i = 1; i < taskTheadCount; i++) {
             consumer.execute(() -> {
                 while (!task.isEmpty()) {
+                    String url=null;
                     try {
 //                        获取一个ts进行下载
                         String tsLine = task.take();
-                        String index = tsLine.split(separator)[0];
-                        String url = tsLine.split(separator)[1];
-                        boolean hasDown = downloadTs(roomId, m3u8File, tsKey, url);
+                        String index = tsLine.split(SEPARATOR)[0];
+                        url = tsLine.split(SEPARATOR)[1];
+                        boolean hasDown = downloadTs(roomId, m3u8File, tsKey, url, downErrorInfoVo);
                         if (hasDown) {
                             successLines.add(url);
                             successLineMap.put(Integer.parseInt(index), url);
@@ -428,11 +439,24 @@ public class DownLoadUtil {
                         }
                     } catch (Exception e) {
                         log.warn("---runTaskDownThread--队列读取异常,roomId={}线程退出,错误信息e={}", roomId, e.getMessage());
+                        addExceptioinLog(downErrorInfoVo, e.getMessage(), url);
                         break;
                     }
                 }
             });
         }
+    }
+
+    private static void addExceptioinLog(DownErrorInfoVo downError, String key, String tsUrl) {
+        if(key==null){
+            return;
+        }
+        AtomicInteger tsErrorCount= downError.getTsErrorCounterMap().get(key);
+        if(tsErrorCount==null){
+            tsErrorCount=new AtomicInteger();
+            downError.getTsErrorCounterMap().put(key, tsErrorCount);
+        }
+        tsErrorCount.incrementAndGet();
     }
 
 
@@ -474,11 +498,12 @@ public class DownLoadUtil {
      * @param downloadUrl
      * @return
      */
-    private static long getRemoteSize(String downloadUrl) {
+    private static long getRemoteSize(String downloadUrl, DownErrorInfoVo downErrorInfoVo) {
         try {
             Long response = getRemoteSize(downloadUrl, 5000);
             if (response != null) return response;
         } catch (Exception e) {
+            addExceptioinLog(downErrorInfoVo, e.getMessage(), downloadUrl);
             log.error("---getRemoteSize--{} error={}", downloadUrl, e.getMessage(), e);
         }
         return 0;
@@ -549,7 +574,7 @@ public class DownLoadUtil {
      * @return
      * @throws Exception
      */
-    private static boolean downloadTs(String roomId, File m3u8File, TsKey tsKey, String tsUrl) {
+    private static boolean downloadTs(String roomId, File m3u8File, TsKey tsKey, String tsUrl, DownErrorInfoVo downErrorInfoVo) {
         File pFile = m3u8File.getParentFile();
         //重定义文件名
         File tsDestFile = new File(pFile, obtainTsUrl(tsUrl, false));
@@ -557,7 +582,7 @@ public class DownLoadUtil {
         if (tsDestFile.exists()) {
             //判断本地文件是否完整
             long localSize = tsDestFile.length();
-            long remoteSize = getRemoteSize(tsUrl);
+            long remoteSize = getRemoteSize(tsUrl, downErrorInfoVo);
             if (localSize == remoteSize) {
                 return true;
             }
@@ -586,6 +611,7 @@ public class DownLoadUtil {
             log.debug("downloadTs--roomId={} tsUrl={},hasDown={} time={}", roomId, tsUrl, hasDown, System.currentTimeMillis() - time);
         } catch (Exception e) {
             log.error("downloadTs--roomId={} tsUrl={},time={} error={}", roomId, tsUrl, System.currentTimeMillis() - time, e.getMessage());
+            addExceptioinLog(downErrorInfoVo, e.getMessage(), tsUrl);
         }
         return hasDown;
     }

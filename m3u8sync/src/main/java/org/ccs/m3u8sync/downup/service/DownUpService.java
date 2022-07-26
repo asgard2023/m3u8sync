@@ -19,6 +19,7 @@ import org.ccs.m3u8sync.config.M3u8SyncConfiguration;
 import org.ccs.m3u8sync.config.RelayConfiguration;
 import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
+import org.ccs.m3u8sync.downup.domain.DownErrorInfoVo;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.downup.down.DownResult;
 import org.ccs.m3u8sync.downup.queue.DownQueue;
@@ -49,6 +50,8 @@ import java.util.stream.Collectors;
 public class DownUpService {
     @Autowired
     private DownQueue queue;
+    @Autowired
+    private DownErrorService downErrorService;
     @Autowired
     private DownUpConfig downUpConfig;
     @Autowired
@@ -181,6 +184,29 @@ public class DownUpService {
         return queue.moveErr();
     }
 
+    private DownErrorInfoVo getDownErrorCache(DownBean bean, String roomId) {
+        DownErrorInfoVo downError = downErrorService.getDownErrorLocalCache(roomId);
+        if(downError==null){
+            downError = downErrorService.getDownError(roomId);
+        }
+        try {
+            if(downError==null){
+                downError=new DownErrorInfoVo(bean.getInitTime(), 0, 0, 0, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), null, null, null);
+            }
+            else{
+                if(downError.getTsErrorCountMap()==null){
+                    downError.setTsErrorCountMap(new ConcurrentHashMap<>());
+                }
+                downError.getTsErrorCountMap().clear();
+                downError.getErrorMap().clear();
+            }
+        } catch (Exception e) {
+            log.error("----getDownErrorCache--roomId={} error={}", roomId, e.getMessage(), e);
+            downError=new DownErrorInfoVo(bean.getInitTime(), 0, 0, 0, null, new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), new ConcurrentHashMap<>(), null, null, null);
+        }
+        return downError;
+    }
+
     public void doOneBeanM3u8(String roomId) {
         if (checkDownupNotOpen()) {
             return;
@@ -196,14 +222,16 @@ public class DownUpService {
     private void doOneBeanFile(DownBean bean) {
         String roomId = bean.getRoomId();
         FileListVo fileListVo = nginxApiRest.getFileListBy(bean.getPath(), null);
+        DownErrorInfoVo downError = getDownErrorCache(bean, roomId);
+        downError.setTryDownCount(downError.getTryDownCount()+1);
         DownResult result = null;
         try {
-            result = DownLoadUtil.downloadFiles(bean.getRoomId(), fileListVo, downUpConfig.getNginxUrl(), downUpConfig.getDownPath());
+            result = DownLoadUtil.downloadFiles(bean.getRoomId(), fileListVo, downUpConfig.getNginxUrl(), downUpConfig.getDownPath(), downError);
         } catch (Exception e) {
             downFailCounter.incrementAndGet();
             log.error("----doOneBeanFile--roomId={}，直接从任务移除，需要调用add重新加入方可恢复", roomId);
             queue.delete(roomId);
-            queue.putErr(roomId);
+            queue.putErr(roomId, downError);
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downErr:" + e.getMessage());
             errorMap.put(roomId, bean);
@@ -217,7 +245,7 @@ public class DownUpService {
         if (!totalTsNums.equals(successTsNums)) {
             downFailCounter.incrementAndGet();
             log.error("roomId={}下载不完全,ts总数{},下载成功数{}", roomId, totalTsNums, successTsNums);
-            queue.putErr(roomId);
+            queue.putErr(roomId, downError);
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downFail");
             errorMap.put(roomId, bean);
@@ -275,9 +303,9 @@ public class DownUpService {
     }
 
     private void doOneBeanM3u8(DownBean bean) {
-        log.info("从队列获取一个下载任务{} {},队列剩余个数{},异常数量堆积{}个", bean.getRoomId(), bean.getUrl(), queue.size(), queue.errSize());
-        //先下载原画,然后上传原画成功后,再下载试看的M3u8,再上传试看的资源到阿里
         String roomId = bean.getRoomId();
+        log.info("从队列获取一个下载任务{} {},队列剩余个数{},异常数量堆积{}个 roomId={}", bean.getRoomId(), bean.getUrl(), queue.size(), queue.errSize(), roomId);
+        //先下载原画,然后上传原画成功后,再下载试看的M3u8,再上传试看的资源到阿里
         String url = bean.getUrl();
         if (StringUtils.isBlank(url) || "null".equals(url)) {
             queue.delete(roomId);
@@ -288,15 +316,17 @@ public class DownUpService {
         String fileName = url.substring(url.lastIndexOf("/"));
         m3u8Path = CommUtils.appendUrl(m3u8Path, fileName);
         File destFile = FileUtil.file(m3u8Path);
+        DownErrorInfoVo downError = getDownErrorCache(bean, roomId);
+        downError.setTryDownCount(downError.getTryDownCount()+1);
         //不重新设置M3u8,保持与原文件一致
         DownResult result = null;
         try {
-            result = DownLoadUtil.downloadM3u8(roomId, url, destFile, false);
+            result = DownLoadUtil.downloadM3u8(roomId, url, destFile, false, downError);
         } catch (FileUnexistException e) {
             downFailCounter.incrementAndGet();
             log.error("----doOneBean--roomId={} m3u8Path={} not found，直接从任务移除，需要调用add重新加入方可恢复", roomId, m3u8Path);
             queue.delete(roomId);
-            queue.putErr(roomId);
+            queue.putErr(roomId, downError);
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downErr:" + e.getMessage() + "," + url);
             errorMap.put(roomId, bean);
@@ -309,7 +339,7 @@ public class DownUpService {
                 queue.delete(roomId);
                 return;
             }
-            queue.putErr(roomId);
+            queue.putErr(roomId, downError);
             return;
         }
         Integer successTsNums = result.getTss().size();
@@ -319,7 +349,7 @@ public class DownUpService {
         if (!totalTsNums.equals(successTsNums)) {
             downFailCounter.incrementAndGet();
             log.error("roomId={}下载不完全,ts总数{},下载成功数{},m3u8Path={}", roomId, totalTsNums, successTsNums, m3u8Path);
-            queue.putErr(roomId);
+            queue.putErr(roomId, downError);
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downFail");
             errorMap.put(roomId, bean);
@@ -641,5 +671,9 @@ public class DownUpService {
     private void removeFail(String code, String roomId) {
         String errorKey = code + ":" + roomId;
         failCountMap.remove(errorKey);
+    }
+
+    public void remove(String roomId){
+        queue.delete(roomId);
     }
 }

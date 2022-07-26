@@ -4,6 +4,8 @@ import cn.hutool.core.collection.CollUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.downup.domain.DownBean;
+import org.ccs.m3u8sync.downup.domain.DownErrorInfoVo;
+import org.ccs.m3u8sync.downup.service.DownErrorService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,8 @@ import java.util.Set;
 public class DownQueue {
     @Autowired
     private RedisTemplate redisTemplate;
+    @Autowired
+    private DownErrorService downErrorService;
 
     /** 永久key */
     private static final String HASH_KEY = "m3u8sync:downup:downhash";
@@ -118,6 +122,11 @@ public class DownQueue {
         redisTemplate.boundListOps(ERR_LIST_KEY).rightPush(roomId);
     }
 
+    public void putErr(String roomId, DownErrorInfoVo downErrorInfoVo){
+        redisTemplate.boundListOps(ERR_LIST_KEY).rightPush(roomId);
+        downErrorService.putDownError(roomId, downErrorInfoVo);
+    }
+
 
 
     public Long size(){
@@ -134,5 +143,6 @@ public class DownQueue {
 
     public void delete(String roomId){
         redisTemplate.boundHashOps(HASH_KEY).delete(roomId);
+        downErrorService.getDownError_evict(roomId);
     }
 }

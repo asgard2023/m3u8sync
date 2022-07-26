@@ -10,7 +10,9 @@ import org.ccs.m3u8sync.config.DownUpConfig;
 import org.ccs.m3u8sync.config.RelayConfiguration;
 import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
+import org.ccs.m3u8sync.downup.domain.DownErrorInfoVo;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
+import org.ccs.m3u8sync.downup.service.DownErrorService;
 import org.ccs.m3u8sync.downup.service.DownUpService;
 import org.ccs.m3u8sync.exceptions.ParamErrorException;
 import org.ccs.m3u8sync.exceptions.ParamNullException;
@@ -33,6 +35,8 @@ import java.util.*;
 public class DownUpController {
     @Autowired
     private DownUpService downUpService;
+    @Autowired
+    private DownErrorService downErrorService;
     @Autowired
     private DownUpConfig downUpConfig;
     @Autowired
@@ -258,5 +262,31 @@ public class DownUpController {
             downUpService.deleteDown(roomId, fileInfo);
         }
         return "ok";
+    }
+
+    /**
+     * 用于显示任务的异常信息信息
+     *
+     * @return ResultData
+     */
+    @GetMapping("downErrorInfo")
+    public ResultData getDownErrorInfo(@RequestParam("roomId") String roomId) {
+        DownErrorInfoVo downErrorInfo = downErrorService.getDownErrorLocalCache(roomId);
+        if(downErrorInfo==null){
+            downErrorInfo = downErrorService.getDownError(roomId);
+        }
+        return ResultData.success(downErrorInfo);
+    }
+
+    /**
+     * 用于移除失败的任务，不直接停止当前任务，不会将异常任务加回正常队列
+     *
+     * @return ResultData
+     */
+    @GetMapping("remove")
+    public ResultData remove(@RequestParam("roomId") String roomId) {
+        log.info("----remove={}", roomId);
+        downUpService.remove(roomId);
+        return ResultData.success();
     }
 }
