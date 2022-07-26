@@ -3,10 +3,10 @@
 另一台通过读下m3u8文件下载Nginx下对应的切片的方式同步数据
 需要redis用于保存执行状态
 支持多机多服务并行执行
-##单体模式
+## 单体模式
 <img src="https://opendfl-1259373829.cos.ap-guangzhou.myqcloud.com/doc/m3u8sync/single.jpg" width="80%" syt height="80%" />
 
-##中续模式
+## 中续模式
 <img src="https://opendfl-1259373829.cos.ap-guangzhou.myqcloud.com/doc/m3u8sync/relay.jpg" width="80%" syt height="80%" />
 
 
