@@ -16,6 +16,9 @@ public class RelayConfiguration {
 
     private String code;
 
+    /**
+     * 不要以"/"结尾
+     */
     private String relayNiginx="http://localhost:9200";
 
     /**

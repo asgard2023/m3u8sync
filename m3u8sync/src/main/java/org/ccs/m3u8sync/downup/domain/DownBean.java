@@ -37,4 +37,5 @@ public class DownBean implements Serializable {
      */
     private String syncType;
     private Integer ifRelayCallDel=0;
+    private String lastM3u8Url;
 }

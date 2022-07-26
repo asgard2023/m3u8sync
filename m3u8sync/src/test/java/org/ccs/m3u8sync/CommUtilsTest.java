@@ -54,4 +54,14 @@ class CommUtilsTest {
         String v=CommUtils.getBaseUrl(url);
         Assertions.assertEquals("http://www.baidu.com", v);
     }
+
+    @Test
+    void getRelayUrl(){
+        String url="http://175.178.252.112:81/m3u8/live/12344678/index.m3u8";
+        String roomId="12344678";
+        String relayNginxUrl="http://relay1:80/down";
+        url=CommUtils.getRelayUrl(url, roomId, relayNginxUrl);
+        System.out.println(url);
+        Assertions.assertEquals("http://relay1:80/down/12344678/index.m3u8", url);
+    }
 }

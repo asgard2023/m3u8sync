@@ -57,6 +57,7 @@ public class NextM3u8SyncRest {
         String apiUrl = CommUtils.appendUrl(nextM3u8SyncUrl, "downup/add");
         apiUrl += "?roomId=" + roomId;
         apiUrl += "&ifRelayCallDel=" + ifRelayCallDel;
+        apiUrl += "&lastM3u8Url=" + URLEncoder.encode(relayConfiguration.getLocalM3u8Sync());
         if (StringUtils.isNotBlank(m3u8Url)) {
             apiUrl += "&m3u8Url=" + URLEncoder.encode(m3u8Url);
         }
@@ -81,21 +82,24 @@ public class NextM3u8SyncRest {
      * @param fileInfo
      * @return
      */
-    public ResultData callbackDel(String roomId, String successDel, M3u8FileInfoVo fileInfo) {
+    public ResultData callbackDel(String roomId, String successDel, String lastM3u8Url, M3u8FileInfoVo fileInfo) {
         HttpHeaders requestHeaders = initPostHeader();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
-        String nextM3u8SyncUrl = relayConfiguration.getNextM3u8Sync();
-        String apiUrl = CommUtils.appendUrl(nextM3u8SyncUrl, "downup/callbackDel");
+        String apiUrl = CommUtils.appendUrl(lastM3u8Url, "downup/callbackDel");
+        apiUrl += "/" + roomId;
         if (StringUtils.isNotBlank(successDel)) {
-            apiUrl += "&successDel=" + URLEncoder.encode(successDel);
+            apiUrl += "?successDel=" + URLEncoder.encode(successDel);
         }
 
         String bodyString = JSONUtil.toJsonStr(fileInfo);
-        log.info("----callbackDel--roomId={}, bodyString={}", roomId, bodyString);
+        log.info("----callbackDel--roomId={}, apiUrl={} bodyString={}", roomId, apiUrl, bodyString);
         HttpEntity<String> httpEntitys = new HttpEntity<>(bodyString, requestHeaders);
         ResponseEntity<String> exchanges = restTemplate.postForEntity(apiUrl, httpEntitys, String.class);
         String resultRemote = exchanges.getBody();
         log.info("----callbackDel--roomId={}, resultRemote={}", roomId, resultRemote);
+        if(StringUtils.equals("ok", resultRemote)){
+            return ResultData.success(resultRemote);
+        }
         return getResultData(resultRemote);
     }
 

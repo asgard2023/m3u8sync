@@ -133,4 +133,14 @@ public class CommUtils {
         }
         return url;
     }
+
+    public static String getRelayUrl(String url, String roomId, String relayNginxUrl){
+        String baseUrl=CommUtils.getBaseUrl(url);
+        String relPath=url.substring(baseUrl.length());
+        relPath=relPath.substring(0, relPath.indexOf(roomId));
+        //把下载地址换成relayNginx的网址
+        url=url.replace(baseUrl, relayNginxUrl);
+        url=url.replace(relPath, "/");
+        return url;
+    }
 }

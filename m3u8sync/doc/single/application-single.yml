@@ -27,7 +27,7 @@ downup:
 
 callback:
   open: true
-  baseUrl: http://192.168.2.154:9291
+  baseUrl: http://192.168.1.4:9291
   paramUrl: m3u8Sync/callback/{roomId}
 
 relay:
@@ -35,10 +35,10 @@ relay:
   open: false
   relayNiginx:
   #用于级联服务，级联下一节点
-  nextM3u8Sync: http://localhost:9293
+  nextM3u8Sync: http://localhost:9290
   localM3u8Sync: http://localhost:${server.port}
   #用于中继开始时，通知下节点下载完成，回调callbackDel删除本节点的文件(down_path+filePath)
-  deleteOnSuccess: true
+  deleteOnSuccess: false
 
 
 # /info端点信息配置
@@ -49,8 +49,8 @@ info:
 
 spring:
   redis:
-    host: 192.168.1.254
-    database: 2
+    host: end
+    database: 0
     password: ''
     port: 6379
     timeout: 2000

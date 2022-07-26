@@ -71,6 +71,7 @@ public class DownUpController {
     public ResultData add(@RequestParam("roomId") String roomId
             , @RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
             , @RequestParam(value = "m3u8Url", required = false) String m3u8Url
+            , @RequestParam(value = "lastM3u8Url", required = false) String lastM3u8Url
             , @RequestParam(value = "ifRelayCallDel", required = false, defaultValue = "0") Integer ifRelayCallDel
             , @RequestBody CallbackVo callback) {
 
@@ -85,6 +86,9 @@ public class DownUpController {
         }
         if (StringUtils.isNotBlank(format)) {
             format = URLDecoder.decode(format);
+        }
+        if (StringUtils.isNotBlank(lastM3u8Url)) {
+            lastM3u8Url = URLDecoder.decode(lastM3u8Url);
         }
         if (StringUtils.isBlank(m3u8Url)) {
             m3u8Url = downUpConfig.getNginxUrl(roomId, format);
@@ -115,6 +119,7 @@ public class DownUpController {
         bean.setSyncType(SyncType.M3U8.getType());
         bean.setIfRelayCallDel(ifRelayCallDel);
         bean.setFormat(format);
+        bean.setLastM3u8Url(lastM3u8Url);
         downUpService.addTask(roomId, bean);
         return ResultData.success();
     }

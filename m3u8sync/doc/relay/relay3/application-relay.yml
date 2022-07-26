@@ -34,10 +34,10 @@ relay:
   code: relay3
   #中否开启中继模式，本节点下载成功自动通知下一节点，下一节点下载成功，自动回调删除本节点文件
   open: true
-  relayNiginx: http://relay3:9200
+  relayNiginx: http://relay3:80/down
   #用于级联服务，级联下一节点
-  nextM3u8Sync: http://localhost:9293
-  localM3u8Sync: http://localhost:${server.port}
+  nextM3u8Sync: http://end:9290
+  localM3u8Sync: http://relay3:${server.port}
   #用于中继开始时，通知下节点下载完成，回调callbackDel删除本节点的文件(down_path+filePath)
   deleteOnSuccess: true
 
@@ -50,8 +50,8 @@ info:
 
 spring:
   redis:
-    host: 192.168.1.254
-    database: 2
+    host: relay3
+    database: 0
     password: ''
     port: 6379
     timeout: 2000

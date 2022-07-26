@@ -423,16 +423,13 @@ public class DownUpService {
             if (relayConfiguration.isDeleteOnSuccess()) {
                 ifRelayCallDel = 1;
             }
-            String url = downBean.getUrl();
-            String baseUrl=CommUtils.getBaseUrl(url);
-            //把下载地址换成relayNginx的网址
-            url=url.replace(baseUrl, relayConfiguration.getRelayNiginx());
-
+            String url=CommUtils.getRelayUrl(downBean.getUrl(), downBean.getRoomId(), relayConfiguration.getRelayNiginx());
+            log.debug("----relayOnSuccess--url={} roomId={} relayNginx={} resultUrl={}", downBean.getUrl(), downBean.getRoomId(), relayConfiguration.getRelayNiginx(), url);
             ResultData resultData = nextM3u8SyncRest.addSync(roomId, downBean.getFormat(), url, ifRelayCallDel, downBean.getCallback());
             isSuccess = resultData.getSuccess();
 
             if (downBean.getIfRelayCallDel() == 1) {
-                nextM3u8SyncRest.callbackDel(roomId, "true", fileInfoVo);
+                nextM3u8SyncRest.callbackDel(roomId, "true", downBean.getLastM3u8Url(), fileInfoVo);
             }
         } catch (HttpException e) {
             callbackFailCounter.incrementAndGet();
