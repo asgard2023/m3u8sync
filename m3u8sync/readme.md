@@ -6,7 +6,7 @@
 ## 单体模式
 <img src="https://opendfl-1259373829.cos.ap-guangzhou.myqcloud.com/doc/m3u8sync/single.jpg" width="80%" syt height="80%" />
 
-## 中续模式
+## 中继模式
 <img src="https://opendfl-1259373829.cos.ap-guangzhou.myqcloud.com/doc/m3u8sync/relay.jpg" width="80%" syt height="80%" />
 
 
