@@ -25,3 +25,10 @@
 ## m3u8sync-call-demo调用服务示例（支持回调）
 * 增加同步时可传入回调接口地址。
 * 下载完成后，按传入的回调接口地址进行回调通知。
+
+# 支持两种模式
+## 单体模式(支持集群)
+<img src="https://opendfl-1259373829.cos.ap-guangzhou.myqcloud.com/doc/m3u8sync/single2.jpg" width="80%" syt height="80%" />
+
+## 中继模式(各relay层支持集群)
+<img src="https://opendfl-1259373829.cos.ap-guangzhou.myqcloud.com/doc/m3u8sync/relay2.jpg" width="80%" syt height="80%" />
