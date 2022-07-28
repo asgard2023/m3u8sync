@@ -37,7 +37,9 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
-import java.util.*;
+import java.util.Date;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -150,24 +152,31 @@ public class DownUpService {
                         ThreadUtil.sleep(5 * 1000L);
                         continue;
                     }
-                    Long curTime = System.currentTimeMillis();
-                    Long timeHourExpire = bean.getInitTime().getTime() + 3600000 * downUpConfig.getExpireHour();
-                    String roomId = bean.getRoomId();
-                    //如果任务超过过期时间，则删除任务，不执行，超时移除任务
-                    if (timeHourExpire < curTime) {
-                        queue.delete(roomId);
-                        log.warn("----doTask--roomId={} initTime={} expireHour={} expired, remove task", roomId, bean.getInitTime(), downUpConfig.getExpireHour());
-                        continue;
-                    }
-                    if (SyncType.M3U8.getType().equals(bean.getSyncType())) {
-                        doDownBeanM3u8(bean);
-                    } else {
-                        doDownBeanFile(bean);
-                    }
-                    log.info("---doTask--roomID={}的下载任务已结束", bean.getRoomId());
+
+                    doTaskDown(bean);
                 }
             });
         }
+    }
+
+    public DownErrorInfoVo doTaskDown(DownBean bean) {
+        Long curTime = System.currentTimeMillis();
+        Long timeHourExpire = bean.getInitTime().getTime() + 3600000 * downUpConfig.getExpireHour();
+        String roomId = bean.getRoomId();
+        //如果任务超过过期时间，则删除任务，不执行，超时移除任务
+        if (timeHourExpire < curTime) {
+            queue.delete(roomId);
+            log.warn("----doTask--roomId={} initTime={} expireHour={} expired, remove task", roomId, bean.getInitTime(), downUpConfig.getExpireHour());
+            return null;
+        }
+        DownErrorInfoVo downError = null;
+        if (SyncType.M3U8.getType().equals(bean.getSyncType())) {
+            downError = doDownBeanM3u8(bean);
+        } else {
+            downError = doDownBeanFile(bean);
+        }
+        log.info("---doTask--roomID={}的下载任务已结束", bean.getRoomId());
+        return downError;
     }
 
     /**
@@ -185,22 +194,21 @@ public class DownUpService {
 
     private DownErrorInfoVo getDownErrorCache(DownBean bean, String roomId) {
         DownErrorInfoVo downError = downErrorService.getDownErrorLocalCache(roomId);
-        if(downError==null){
+        if (downError == null) {
             downError = downErrorService.getDownError(roomId);
         }
         try {
-            if(downError==null){
-                downError=new DownErrorInfoVo(bean);
-            }
-            else{
-                if(downError.getTsErrorCountMap()!=null) {
+            if (downError == null) {
+                downError = new DownErrorInfoVo(bean);
+            } else {
+                if (downError.getTsErrorCountMap() != null) {
                     downError.getTsErrorCountMap().clear();
                 }
                 downError.getErrorMap().clear();
             }
         } catch (Exception e) {
             log.error("----getDownErrorCache--roomId={} error={}", roomId, e.getMessage(), e);
-            downError=new DownErrorInfoVo(bean);
+            downError = new DownErrorInfoVo(bean);
         }
         return downError;
     }
@@ -217,11 +225,11 @@ public class DownUpService {
         return doDownBeanM3u8(bean);
     }
 
-    private void doDownBeanFile(DownBean bean) {
+    private DownErrorInfoVo doDownBeanFile(DownBean bean) {
         String roomId = bean.getRoomId();
         FileListVo fileListVo = nginxApiRest.getFileListBy(bean.getPath(), null);
         DownErrorInfoVo downError = getDownErrorCache(bean, roomId);
-        downError.setTryDownCount(downError.getTryDownCount()+1);
+        downError.setTryDownCount(downError.getTryDownCount() + 1);
         downErrorService.putDownError(roomId, downError);
         DownResult result = null;
         try {
@@ -234,7 +242,7 @@ public class DownUpService {
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downErr:" + e.getMessage());
             errorMap.put(roomId, bean);
-            return;
+            return downError;
         }
 
         Integer successTsNums = result.getTss().size();
@@ -248,7 +256,7 @@ public class DownUpService {
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downFail");
             errorMap.put(roomId, bean);
-            return;
+            return downError;
         }
 
         DownBean downBean = queue.get(roomId);
@@ -270,6 +278,7 @@ public class DownUpService {
             Long curTime = System.currentTimeMillis();
             log.info("----doDownBeanFile--finished--roomId={}下载完成，下载数:{}，用时:{}s", roomId, successTsNums, (curTime - bean.getInitTime().getTime()) / 1000);
         }
+        return downError;
     }
 
     /**
@@ -316,7 +325,7 @@ public class DownUpService {
         m3u8Path = CommUtils.appendUrl(m3u8Path, fileName);
         File destFile = FileUtil.file(m3u8Path);
         DownErrorInfoVo downError = getDownErrorCache(bean, roomId);
-        downError.setTryDownCount(downError.getTryDownCount()+1);
+        downError.setTryDownCount(downError.getTryDownCount() + 1);
         downErrorService.putDownError(roomId, downError);
         //不重新设置M3u8,保持与原文件一致
         DownResult result = null;
@@ -454,7 +463,7 @@ public class DownUpService {
             if (relayConfiguration.isDeleteOnSuccess()) {
                 ifRelayCallDel = 1;
             }
-            String url=CommUtils.getRelayUrl(downBean.getUrl(), downBean.getRoomId(), relayConfiguration.getRelayNiginx());
+            String url = CommUtils.getRelayUrl(downBean.getUrl(), downBean.getRoomId(), relayConfiguration.getRelayNiginx());
             log.debug("----relayOnSuccess--url={} roomId={} relayNginx={} resultUrl={}", downBean.getUrl(), downBean.getRoomId(), relayConfiguration.getRelayNiginx(), url);
             ResultData resultData = nextM3u8SyncRest.addAsync(roomId, downBean.getFormat(), url, ifRelayCallDel, downBean.getCallback());
             isSuccess = resultData.getSuccess();
@@ -675,7 +684,7 @@ public class DownUpService {
         failCountMap.remove(errorKey);
     }
 
-    public void remove(String roomId){
+    public void remove(String roomId) {
         queue.delete(roomId);
     }
 }

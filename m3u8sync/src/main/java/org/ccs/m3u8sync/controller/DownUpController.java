@@ -127,7 +127,7 @@ public class DownUpController {
      *
      * @param format   url中roomId组成的格式
      * @param callback 回调接口相关
-     * @return
+     * @return 数据
      * @author chenjh
      */
     @PostMapping("addNginxList")
@@ -247,11 +247,11 @@ public class DownUpController {
     @PostMapping("callbackDel/{roomId}")
     public String callbackDel(@PathVariable(value = "roomId") String roomId, @RequestParam(value = "successDel", required = false) String successDel, @RequestBody M3u8FileInfoVo fileInfo) {
         //用于快速验证回调接口
+        log.info("----callbackDel--roomId={} successDel={} fileInfo={}", roomId, successDel, JSONUtil.toJsonStr(fileInfo));
         if (StringUtils.equals("checkCallbackDel", roomId) && StringUtils.equals("test", fileInfo.getFilePath())) {
             log.info("----callbackDel--roomId={} check ok", roomId);
             return "ok";
         }
-        log.info("----callbackDel--roomId={} successDel={} fileInfo={}", roomId, successDel, JSONUtil.toJsonStr(fileInfo));
         if ("true".equals(successDel)) {
             downUpService.deleteDown(roomId, fileInfo);
         }
@@ -266,7 +266,9 @@ public class DownUpController {
     @GetMapping("remove")
     public ResultData remove(@RequestParam("roomId") String roomId) {
         log.info("----remove={}", roomId);
-        downUpService.remove(roomId);
+        if (!StringUtils.equals("checkRemove", roomId)) {
+            downUpService.remove(roomId);
+        }
         return ResultData.success();
     }
 }

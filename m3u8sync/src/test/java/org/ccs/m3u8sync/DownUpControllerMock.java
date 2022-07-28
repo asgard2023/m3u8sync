@@ -34,8 +34,8 @@ class DownUpControllerMock {
     }
 
     @Test
-    void add() throws Exception {
-        MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders.post("/downup/add")
+    void addAsync() throws Exception {
+        MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders.post("/downup/addAsync")
                         .contentType(MediaType.APPLICATION_JSON)
                         .param("roomId", DownUpService.CHECK_RELAY)
                         .param("m3u8Url", "test")
@@ -45,15 +45,16 @@ class DownUpControllerMock {
 
         int status = mvcResult.getResponse().getStatus();                 //得到返回代码
         String content = mvcResult.getResponse().getContentAsString();    //得到返回结果
-        log.info("---add status={} content={}", status, content);
-        Assertions.assertEquals(200, status, "/downup/add");
+        log.info("---addAsync status={} content={}", status, content);
+        Assertions.assertEquals(200, status, "/downup/addAsync");
     }
 
     @Test
-    void callback() throws Exception {
-        String url="/downup/callback/"+DownUpService.CHECK_CALLBACK;
+    void callbackDel() throws Exception {
+        String url="/downup/callbackDel/"+DownUpService.CHECK_CALLBACK;
         MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders.post(url)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .param("roomId", "checkCallbackDel")
                         .param("successDel", "false")
                         .content("{}")
                         .accept(MediaType.APPLICATION_JSON))
@@ -73,6 +74,19 @@ class DownUpControllerMock {
         String content = mvcResult.getResponse().getContentAsString();    //得到返回结果
         log.info("---recover status={} content={}", status, content);
         Assertions.assertEquals(200, status, "/downup/recover");
+
+    }
+
+    @Test
+    void remove() throws Exception {
+        MvcResult mvcResult = mockMvc.perform(MockMvcRequestBuilders.get("/downup/remove")
+                        .param("roomId", "checkRemove")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andReturn();
+        int status = mvcResult.getResponse().getStatus();                 //得到返回代码
+        String content = mvcResult.getResponse().getContentAsString();    //得到返回结果
+        log.info("---remove status={} content={}", status, content);
+        Assertions.assertEquals(200, status, "/downup/remove");
 
     }
 
