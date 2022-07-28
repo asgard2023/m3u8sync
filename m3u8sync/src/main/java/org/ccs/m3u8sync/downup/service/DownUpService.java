@@ -615,7 +615,7 @@ public class DownUpService {
     public Map<String, Object> status(String type) {
         Map<String, Object> treeMap = new TreeMap<>();
         if (StringUtils.isBlank(type) || "help".equals(type)) {
-            treeMap.put("usage", "type=help,all,config,errors,queue");
+            treeMap.put("usage", "type=help,all,count,config,errors,queues");
             return treeMap;
         }
 
