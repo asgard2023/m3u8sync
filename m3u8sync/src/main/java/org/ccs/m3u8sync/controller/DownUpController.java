@@ -7,12 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.DownUpConfig;
-import org.ccs.m3u8sync.config.RelayConfiguration;
 import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
-import org.ccs.m3u8sync.downup.domain.DownErrorInfoVo;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
-import org.ccs.m3u8sync.downup.service.DownErrorService;
 import org.ccs.m3u8sync.downup.service.DownUpService;
 import org.ccs.m3u8sync.exceptions.ParamErrorException;
 import org.ccs.m3u8sync.exceptions.ParamNullException;
@@ -36,13 +33,9 @@ public class DownUpController {
     @Autowired
     private DownUpService downUpService;
     @Autowired
-    private DownErrorService downErrorService;
-    @Autowired
     private DownUpConfig downUpConfig;
     @Autowired
     private NginxApiRest nginxApiRest;
-    @Autowired
-    private RelayConfiguration relayConfiguration;
 
     /**
      * 重新执行指定房间任务 上传原画对应的试看,并更新CMS平台
@@ -51,13 +44,13 @@ public class DownUpController {
      * @param roomId m3u8房间id
      * @return ResultData
      */
-    @GetMapping("one")
-    public ResultData one(@RequestParam("roomId") String roomId) {
+    @GetMapping("retryTask")
+    public ResultData retryTask(@RequestParam(value = "roomId", required = false) String roomId) {
         log.info("开始执行指定房间的重传任务,roomId={}", roomId);
         if (CharSequenceUtil.isBlank(roomId)) {
             throw new ParamNullException("roomId不能为空");
         }
-        downUpService.doOneBeanM3u8(roomId);
+        downUpService.doDownBeanM3u8(roomId);
         return ResultData.success();
     }
 
@@ -71,8 +64,8 @@ public class DownUpController {
      * @param callback       回调接口
      * @return
      */
-    @PostMapping("add")
-    public ResultData add(@RequestParam("roomId") String roomId
+    @PostMapping("addAsync")
+    public ResultData addAsync(@RequestParam("roomId") String roomId
             , @RequestParam(value = "format", required = false, defaultValue = "{roomId}/{roomId}.m3u8") String format
             , @RequestParam(value = "m3u8Url", required = false) String m3u8Url
             , @RequestParam(value = "lastM3u8Url", required = false) String lastM3u8Url
@@ -262,20 +255,6 @@ public class DownUpController {
             downUpService.deleteDown(roomId, fileInfo);
         }
         return "ok";
-    }
-
-    /**
-     * 用于显示任务的异常信息信息
-     *
-     * @return ResultData
-     */
-    @GetMapping("downErrorInfo")
-    public ResultData getDownErrorInfo(@RequestParam("roomId") String roomId) {
-        DownErrorInfoVo downErrorInfo = downErrorService.getDownErrorLocalCache(roomId);
-        if(downErrorInfo==null){
-            downErrorInfo = downErrorService.getDownError(roomId);
-        }
-        return ResultData.success(downErrorInfo);
     }
 
     /**

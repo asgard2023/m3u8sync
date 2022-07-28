@@ -31,39 +31,25 @@ java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev
 java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
 
 ## 常用接口
-### /downup/add增加新的下载通知
-示例：http://localhost:9290/downup/add?roomId=xxx&format=xxx&m3u8Url=xxxx
-请求类型：post
-参数：
-- roomId 必填，房间
-- url 可选
-- format 可选(为空时取yml配置的downup.format)，如果url为空，则会根据format与yml配置的dowup.nginx-url动态生成url
-- callback(baseUrl,paramUrl) 可选，如果为空则用ymal的callback配置，用于下载完成后回调对应接口
-  例如1：
-  downup.nginx-url=http://175.178.252.112:81/m3u8/live/
-  format={roomId}/{roomId}.m3u8  
-  roomId=12344678
-  则下载的m3u8Url=http://175.178.252.112:81/m3u8/live/12344678/12344678.m3u8
-  例如2：
-  downup.nginx-url=http://175.178.252.112:81/m3u8/live/
-  format={roomId}/index.m3u8  
-  roomId=wukong
-  则下载的m3u8Url=http://175.178.252.112:81/m3u8/live/wukong/index.m3u8
-
-下载完成后可回调地址：
-- baseUrl+paramUrl.replace({roomId},roomId)
-- 如果开启回调，则收到回调接口的返回ok，才算成功，否则视为下载异常，加入异常队列，以便于下次重试。
-
-
-### /downup/one异常修复，之前有失败才能使用
+### /downup/addAsync 添加m3u8下载任务
+curl "http://localhost:9290/downup/addAsync?roomId=xxxx"
+### /downup/addNginxList nginx开启文件列表显示功能，此接口读取目录列表中的所有m3u8进行处理
+curl "http://localhost:9290/downup/addNginxList"
+### /downup/retryTask 对于之前已存在的异常任务重试
 curl "http://localhost:9290/downup/one?roomId=xxxx"
-### /downup/recover手动批量异常恢复上传，每小时整点会自动执行这个
+### /downup/remove 用于移除失败的任务
+curl "http://localhost:9290/downup/remove?roomId=xxxx"
+### /downup/recover 手动批量异常恢复上传，重时时或者每小时整点会自动执行这个
 curl "http://localhost:9290/downup/recover"
-- 无参数
-- 会把下载失败次数超过5次的m3u8的异常下载任务从异常队列移回下载队列，以便于继续下载。
-### /downup/status上传进度查询
+### /downup/status 上传进度查询
 curl "http://localhost:9290/downup/status?type=help"
-### /m3u8/m3u8Info显示m3u8信息，抱括时长
-curl "http://localhost:9290/m3u8/m3u8Info?roomId=1025050251"
-### /m3u8/fileInfo显示文件信息
+  
+### /downErrorInfo/downErrorInfo 用于显示任务的异常信息信息
+curl "http://localhost:9290/downErrorInfo/downErrorInfo?roomId=xxxxxxxx"
+### /downErrorInfo/errorInfos 所有本机在用处理的任务或未完成的异常任务
+curl "http://localhost:9290/downErrorInfo/errorInfos"
+  
+### /m3u8/m3u8Info 显示m3u8信息，抱括时长
+curl "http://localhost:9290/m3u8/m3u8Info?roomId=xxxxxxxx"
+### /m3u8/fileInfo 显示文件信息
 curl "http://localhost:9290/m3u8/fileInfo?roomId=1025050251"

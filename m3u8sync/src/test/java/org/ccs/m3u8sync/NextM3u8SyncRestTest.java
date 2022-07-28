@@ -21,11 +21,11 @@ public class NextM3u8SyncRestTest {
     private CallbackConfiguration callbackConfiguration;
 
     @Test
-    public void addSync() {
+    public void addAsync() {
         CallbackVo callback = new CallbackVo();
         callback.setBaseUrl(callbackConfiguration.getBaseUrl());
         callback.setParamUrl(callbackConfiguration.getParamUrl());
-        ResultData resultData = nextM3u8SyncRest.addSync(DownUpService.CHECK_RELAY, "test", "test", 0, callback);
+        ResultData resultData = nextM3u8SyncRest.addAsync(DownUpService.CHECK_RELAY, "test", "test", 0, callback);
         System.out.println(resultData.getResultCode() + " " + resultData.getData());
     }
 }

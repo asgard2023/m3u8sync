@@ -50,11 +50,11 @@ public class NextM3u8SyncRest {
      * @param m3u8Url
      * @return
      */
-    public ResultData addSync(String roomId, String format, String m3u8Url, Integer ifRelayCallDel, CallbackVo callback) {
+    public ResultData addAsync(String roomId, String format, String m3u8Url, Integer ifRelayCallDel, CallbackVo callback) {
         HttpHeaders requestHeaders = initPostHeader();
         requestHeaders.setContentType(MediaType.APPLICATION_JSON);
         String nextM3u8SyncUrl = relayConfiguration.getNextM3u8Sync();
-        String apiUrl = CommUtils.appendUrl(nextM3u8SyncUrl, "downup/add");
+        String apiUrl = CommUtils.appendUrl(nextM3u8SyncUrl, "downup/addAsync");
         apiUrl += "?roomId=" + roomId;
         apiUrl += "&ifRelayCallDel=" + ifRelayCallDel;
         apiUrl += "&lastM3u8Url=" + URLEncoder.encode(relayConfiguration.getLocalM3u8Sync());
@@ -66,11 +66,11 @@ public class NextM3u8SyncRest {
         }
 
         String bodyString = JSONUtil.toJsonStr(callback);
-        log.info("----addSync--roomId={}, bodyString={}", roomId, bodyString);
+        log.info("----addAsync--roomId={}, bodyString={}", roomId, bodyString);
         HttpEntity<String> httpEntitys = new HttpEntity<>(bodyString, requestHeaders);
         ResponseEntity<String> exchanges = restTemplate.postForEntity(apiUrl, httpEntitys, String.class);
         String resultRemote = exchanges.getBody();
-        log.info("----addSync--roomId={}, resultRemote={}", roomId, resultRemote);
+        log.info("----addAsync--roomId={}, resultRemote={}", roomId, resultRemote);
         return getResultData(resultRemote);
     }
 

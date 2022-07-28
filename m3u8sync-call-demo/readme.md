@@ -1,6 +1,6 @@
 #m3u8sync call demo 调用示例demo
 ## 增加m3u8同步
-http://localhost:9291/m3u8Sync/addSync?roomId=xxxx&format={roomId}/{roomId}.m3u8  
+http://localhost:9291/m3u8Sync/addAsync?roomId=xxxx&format={roomId}/{roomId}.m3u8  
 参数说明：  
 roomId 必填  
 format 可选{roomId}/{roomId}.m3u8或者{roomId}/main.m3u8  

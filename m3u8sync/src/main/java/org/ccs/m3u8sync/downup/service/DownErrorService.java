@@ -9,12 +9,15 @@ import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * 正在下载或异常的下载任务信息
+ *
+ * @author chenjh
+ */
 @Service
 @Slf4j
 public class DownErrorService {
@@ -30,7 +33,7 @@ public class DownErrorService {
 
     @CachePut(value = RedisTimeType.CACHE1W, key = "'m3u8:getDownError:'+#roomId")
     public DownErrorInfoVo putDownError(String roomId, DownErrorInfoVo downError){
-        Map<String, Integer> countMap=new HashMap<>();
+        Map<String, Integer> countMap=new HashMap<>(downError.getTotalTsNums());
         Map<String, AtomicInteger> counterMap=downError.getTsErrorCounterMap();
         Set<Map.Entry<String, AtomicInteger>> counterSet=counterMap.entrySet();
         for(Map.Entry<String, AtomicInteger> counter: counterSet){
@@ -51,7 +54,12 @@ public class DownErrorService {
     }
 
     @CacheEvict(value = RedisTimeType.CACHE1W, key = "'m3u8:getDownError:'+#roomId")
-    public void getDownError_evict(String roomId){
+    public void getDownErrorEvict(String roomId){
         errorInfoMap.remove(roomId);
+    }
+
+
+    public Collection<DownErrorInfoVo> errorInfos(){
+        return errorInfoMap.values();
     }
 }

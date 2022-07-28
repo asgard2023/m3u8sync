@@ -97,13 +97,11 @@ public class DownQueue {
         }
         Long listSize =  redisTemplate.opsForList().size(LIST_KEY);
         Long errlistSize = redisTemplate.opsForList().size(ERR_LIST_KEY);
-        if(!hashSize.equals (listSize + errlistSize)){
-            log.info("检测到有异常中断的任务,任务全集size={},待执行任务size={},失败任务size={}", listSize, errlistSize);
-        }
+        log.info("检测到有异常中断的任务,任务全集size={},待执行任务size={},失败任务size={}", hashSize, listSize, errlistSize);
         //将Hash有,但是queue没有的进行同步
-        Set<String> all = redisTemplate.boundHashOps(HASH_KEY).keys();
-        List<String> successList = redisTemplate.boundListOps(LIST_KEY).range(0,listSize-1);
-        List<String> errList = redisTemplate.boundListOps(ERR_LIST_KEY).range(0,errlistSize-1);
+        Set<String> all = redisTemplate.opsForHash().keys(HASH_KEY);
+        List<String> successList = redisTemplate.opsForList().range(LIST_KEY, 0,listSize-1);
+        List<String> errList = redisTemplate.opsForList().range(ERR_LIST_KEY, 0,errlistSize-1);
         Collection<String> main = CollUtil.union(successList,errList);
         Collection<String> del = CollUtil.subtract(all,main);
         log.info("一共需要同步{}个中断任务," , del.size());
@@ -137,12 +135,15 @@ public class DownQueue {
         return  redisTemplate.opsForList().size(ERR_LIST_KEY);
     }
 
-    public List<String> errors(){
-        return  redisTemplate.boundListOps(ERR_LIST_KEY).range(0, 20);
+    public List errors(int count){
+        return  redisTemplate.boundListOps(ERR_LIST_KEY).range(0, count);
+    }
+    public List queues(int count){
+        return  redisTemplate.boundListOps(LIST_KEY).range(0, count);
     }
 
     public void delete(String roomId){
         redisTemplate.boundHashOps(HASH_KEY).delete(roomId);
-        downErrorService.getDownError_evict(roomId);
+        downErrorService.getDownErrorEvict(roomId);
     }
 }

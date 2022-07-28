@@ -27,7 +27,7 @@ downup:
 
 callback:
   open: true
-  baseUrl: http://192.168.2.154:9291
+  baseUrl: http://192.168.1.4:9291
   paramUrl: m3u8Sync/callback/{roomId}
 
 relay:
