@@ -35,7 +35,7 @@ java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
 curl "http://localhost:9290/downup/addAsync?roomId=xxxx"
 ### /downup/addNginxList nginx开启文件列表显示功能，此接口读取目录列表中的所有m3u8进行处理
 curl "http://localhost:9290/downup/addNginxList"
-### /downup/retryTask 对于之前已存在的异常任务重试
+### /downup/retryTask 对于之前已存在的异常任务重试(立即执行，同步模式)
 curl "http://localhost:9290/downup/one?roomId=xxxx"
 ### /downup/remove 用于移除失败的任务
 curl "http://localhost:9290/downup/remove?roomId=xxxx"

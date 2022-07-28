@@ -206,16 +206,16 @@ public class DownUpService {
         return downError;
     }
 
-    public void doDownBeanM3u8(String roomId) {
+    public DownErrorInfoVo doDownBeanM3u8(String roomId) {
         if (checkDownupNotOpen()) {
-            return;
+            return null;
         }
         DownBean bean = queue.get(roomId);
         if (null == bean) {
             log.warn("任务队列中未查询到指定roomId={}的资源", roomId);
             throw new FailedException("任务队列中未找到此任务");
         }
-        doDownBeanM3u8(bean);
+        return doDownBeanM3u8(bean);
     }
 
     private void doDownBeanFile(DownBean bean) {
@@ -302,7 +302,7 @@ public class DownUpService {
         }
     }
 
-    private void doDownBeanM3u8(DownBean bean) {
+    private DownErrorInfoVo doDownBeanM3u8(DownBean bean) {
         String roomId = bean.getRoomId();
         log.info("从队列获取一个下载任务{} {},队列剩余个数{},异常数量堆积{}个 roomId={}", bean.getRoomId(), bean.getUrl(), queue.size(), queue.errSize(), roomId);
         //先下载原画,然后上传原画成功后,再下载试看的M3u8,再上传试看的资源到阿里
@@ -310,7 +310,7 @@ public class DownUpService {
         if (StringUtils.isBlank(url) || "null".equals(url)) {
             queue.delete(roomId);
             log.warn("----doDownBeanM3u8--roomId={} url={} is null remove task", roomId, url);
-            return;
+            return null;
         }
         String m3u8Path = downUpConfig.getRoomIdFilePath(roomId);
         String fileName = url.substring(url.lastIndexOf("/"));
@@ -331,17 +331,17 @@ public class DownUpService {
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downErr:" + e.getMessage() + "," + url);
             errorMap.put(roomId, bean);
-            return;
+            return downError;
         }
         if (null == result) {
             log.error("roomId={}下载失败,url={}", roomId, url);
             if (notExistRemote(url)) {
                 log.error("roomId={}下载失败,直接从任务移除,需调用add重新加入方可恢复,url={}", roomId, url);
                 queue.delete(roomId);
-                return;
+                return downError;
             }
             queue.putErr(roomId, downError);
-            return;
+            return downError;
         }
         Integer successTsNums = result.getTss().size();
         Integer totalTsNums = result.getTsNums();
@@ -354,7 +354,7 @@ public class DownUpService {
             bean.setErrorCount(bean.getErrorCount() + 1);
             bean.setError("downFail");
             errorMap.put(roomId, bean);
-            return;
+            return downError;
         }
 
         DownBean downBean = queue.get(roomId);
@@ -376,6 +376,7 @@ public class DownUpService {
             Long curTime = System.currentTimeMillis();
             log.info("----doOneBean--finished--roomId={}下载完成，下载数:{}，用时:{}s", roomId, successTsNums, (curTime - bean.getInitTime().getTime()) / 1000);
         }
+        return downError;
     }
 
     /**

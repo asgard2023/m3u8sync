@@ -9,6 +9,7 @@ import org.ccs.m3u8sync.client.NginxApiRest;
 import org.ccs.m3u8sync.config.DownUpConfig;
 import org.ccs.m3u8sync.constants.SyncType;
 import org.ccs.m3u8sync.downup.domain.DownBean;
+import org.ccs.m3u8sync.downup.domain.DownErrorInfoVo;
 import org.ccs.m3u8sync.downup.down.DownLoadUtil;
 import org.ccs.m3u8sync.downup.service.DownUpService;
 import org.ccs.m3u8sync.exceptions.ParamErrorException;
@@ -50,8 +51,8 @@ public class DownUpController {
         if (CharSequenceUtil.isBlank(roomId)) {
             throw new ParamNullException("roomId不能为空");
         }
-        downUpService.doDownBeanM3u8(roomId);
-        return ResultData.success();
+        DownErrorInfoVo downErrorInfoVo = downUpService.doDownBeanM3u8(roomId);
+        return ResultData.success(downErrorInfoVo);
     }
 
     /**
