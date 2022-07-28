@@ -1,0 +1,17 @@
+server:
+  port: 9290
+
+spring:
+  application:
+    name: m3u8Sync call demo
+  profiles:
+    active: dev
+    include:
+      - opendfl
+      - frequency
+      - requestlock
+
+m3u8async:
+  apiUrl: http://end:9290/
+  callbackUrl: http://192.168.1.4:9291/
+  callParamUrl: m3u8Sync/callback/{roomId}

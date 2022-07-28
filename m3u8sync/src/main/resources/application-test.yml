@@ -1,6 +1,7 @@
 m3u8sync:
   #自定义异常，异常日志类型simple/full
   exceptionLogType: simple
+  redisCacheEnable: 1
 
 #下载并上传的任务控制
 downup:

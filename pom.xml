@@ -10,6 +10,7 @@
 	<packaging>pom</packaging>
     <modules>
         <module>m3u8sync</module>
+        <module>m3u8sync-security</module>
         <module>m3u8sync-call-demo</module>
     </modules>
 

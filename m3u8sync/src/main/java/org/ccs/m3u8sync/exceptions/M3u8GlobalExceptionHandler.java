@@ -26,9 +26,9 @@ import java.util.TreeMap;
  * @author chenjh
  */
 @ControllerAdvice
-public class GlobalExceptionHandler {
+public class M3u8GlobalExceptionHandler {
 
-    static Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    static Logger logger = LoggerFactory.getLogger(M3u8GlobalExceptionHandler.class);
 
     private Map<String, Object> getRequestMap(HttpServletRequest req) {
         Map<String, Object> reqMap = new TreeMap<>();
@@ -102,7 +102,7 @@ public class GlobalExceptionHandler {
         return logExceptionTypeBase;
     }
     public static void setLogExceptionTypeBase(String logExceptionTypeBase) {
-        GlobalExceptionHandler.logExceptionTypeBase=logExceptionTypeBase;
+        M3u8GlobalExceptionHandler.logExceptionTypeBase=logExceptionTypeBase;
         logger.info("-----setLogExceptionTypeBase--logExceptionTypeBase={}", logExceptionTypeBase);
     }
 

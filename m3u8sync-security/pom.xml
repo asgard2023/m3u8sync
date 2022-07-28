@@ -7,15 +7,27 @@
 		<artifactId>m3u8sync-parent</artifactId>
 		<version>1.0-SNAPSHOT</version>
 	</parent>
-    <artifactId>m3u8sync-call-demo</artifactId>
+    <artifactId>m3u8sync-security</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>m3u8sync-call-demo</name>
-    <description>Sync m3u8 from nginx</description>
+    <name>m3u8sync-security</name>
+    <description>Sync m3u8 from nginx for security</description>
     <properties>
         <java.version>1.8</java.version>
         <skipTests>true</skipTests>
     </properties>
     <dependencies>
+        <!-- 用于支持安全，频率限制，ip白名单，ip黑名单等 -->
+        <dependency>
+            <groupId>cn.org.opendfl</groupId>
+            <artifactId>opendfl-mysql-spring-boot-starter</artifactId>
+            <version>1.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.ccs.m3u8sync</groupId>
+            <artifactId>m3u8sync</artifactId>
+            <version>0.0.1-SNAPSHOT</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>

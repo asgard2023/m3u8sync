@@ -17,4 +17,8 @@ public class M3u8SyncConfiguration {
      * #自定义异常，异常日志类型simple/full
      */
     private String exceptionLogType="simple";
+    /**
+     * 支持关闭这个服务的Redis配置，由外其他类提供
+     */
+    private String redisCacheEnable="1";
 }

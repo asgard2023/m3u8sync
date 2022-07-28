@@ -1,19 +1,19 @@
 package org.ccs.m3u8sync.config;
 
 
-import org.ccs.m3u8sync.constants.RedisTimeType;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.ccs.m3u8sync.constants.RedisTimeType;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.cache.RedisCacheWriter;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -29,11 +29,12 @@ import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
-@Configuration
 @EnableCaching
-@Component("redisConfiguration")
+@Component("redisCacheConfiguration")
 @Slf4j
-public class RedisConfiguration extends CachingConfigurerSupport {
+@EnableConfigurationProperties({M3u8SyncConfiguration.class})
+@ConditionalOnProperty(value = "m3u8sync.redisCacheEnable", havingValue = "1")
+public class RedisCacheConfiguration extends CachingConfigurerSupport {
     @Bean
     public JedisPoolConfig jedisPoolConfig(@Value("${spring.redis.jedis.pool.max-active}") int maxActive,
                                            @Value("${spring.redis.jedis.pool.max-idle}") int maxIdle,
@@ -116,8 +117,8 @@ public class RedisConfiguration extends CachingConfigurerSupport {
         );
     }
 
-    private Map<String, RedisCacheConfiguration> getRedisCacheConfigurationMap() {
-        Map<String, RedisCacheConfiguration> redisCacheConfigurationMap = new HashMap<>();
+    private Map<String, org.springframework.data.redis.cache.RedisCacheConfiguration> getRedisCacheConfigurationMap() {
+        Map<String, org.springframework.data.redis.cache.RedisCacheConfiguration> redisCacheConfigurationMap = new HashMap<>();
         RedisTimeType[] timeTypes = RedisTimeType.values();
         for (RedisTimeType timeType : timeTypes) {
             if (timeType == RedisTimeType.CACHE_DEFAULT) {
@@ -128,14 +129,14 @@ public class RedisConfiguration extends CachingConfigurerSupport {
         return redisCacheConfigurationMap;
     }
 
-    private RedisCacheConfiguration getRedisCacheConfigurationWithTtl(Integer seconds) {
+    private org.springframework.data.redis.cache.RedisCacheConfiguration getRedisCacheConfigurationWithTtl(Integer seconds) {
         Jackson2JsonRedisSerializer<Object> jackson2JsonRedisSerializer = new Jackson2JsonRedisSerializer<>(Object.class);
         ObjectMapper om = new ObjectMapper();
         om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
         om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
         jackson2JsonRedisSerializer.setObjectMapper(om);
 
-        RedisCacheConfiguration redisCacheConfiguration = RedisCacheConfiguration.defaultCacheConfig();
+        org.springframework.data.redis.cache.RedisCacheConfiguration redisCacheConfiguration = org.springframework.data.redis.cache.RedisCacheConfiguration.defaultCacheConfig();
         redisCacheConfiguration = redisCacheConfiguration.serializeValuesWith(
                 RedisSerializationContext
                         .SerializationPair

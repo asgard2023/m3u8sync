@@ -25,7 +25,7 @@ import org.ccs.m3u8sync.downup.down.DownResult;
 import org.ccs.m3u8sync.downup.queue.DownQueue;
 import org.ccs.m3u8sync.exceptions.FailedException;
 import org.ccs.m3u8sync.exceptions.FileUnexistException;
-import org.ccs.m3u8sync.exceptions.GlobalExceptionHandler;
+import org.ccs.m3u8sync.exceptions.M3u8GlobalExceptionHandler;
 import org.ccs.m3u8sync.exceptions.ResultData;
 import org.ccs.m3u8sync.utils.CommUtils;
 import org.ccs.m3u8sync.vo.CallbackVo;
@@ -40,7 +40,6 @@ import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Collectors;
 
 /**
  * 下载上传服务
@@ -78,7 +77,7 @@ public class DownUpService {
             return;
         }
         log.info("目前迁移任务数量{}个,异常队列数量{}个", queue.size(), queue.errSize());
-        GlobalExceptionHandler.setLogExceptionTypeBase(m3u8SyncConfiguration.getExceptionLogType());
+        M3u8GlobalExceptionHandler.setLogExceptionTypeBase(m3u8SyncConfiguration.getExceptionLogType());
         //自动恢复失败的任务
         if (queue.errSize() > 0) {
             queue.moveErr();
