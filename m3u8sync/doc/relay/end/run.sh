@@ -1,1 +1,1 @@
-nohup java -jar  -Xmx128m -Xms64m  m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=end &
+nohup java -jar  -Xmx128m -Xms64m  m3u8sync-1.0-SNAPSHOT.jar --spring.profiles.active=end &

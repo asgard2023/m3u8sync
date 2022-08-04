@@ -153,7 +153,11 @@ public class DownUpService {
                         continue;
                     }
 
-                    doTaskDown(bean);
+                    try {
+                        doTaskDown(bean);
+                    } catch (Exception e) {
+                        log.warn("----doTask--roomId={}", bean.getRoomId(), e);
+                    }
                 }
             });
         }
@@ -615,9 +619,14 @@ public class DownUpService {
     }
 
     private boolean notExistRemote(String url) {
-        HttpResponse response = HttpRequest.head(url).setConnectionTimeout(5000).setReadTimeout(5000).execute();
-        int status = response.getStatus();
-        return 404 == status;
+        try {
+            HttpResponse response = HttpRequest.head(url).setConnectionTimeout(5000).setReadTimeout(5000).execute();
+            int status = response.getStatus();
+            return 404 == status;
+        } catch (Exception e) {
+            log.error("-----notExistRemote--url={}", e);
+            return false;
+        }
     }
 
     public Map<String, Object> status(String type) {

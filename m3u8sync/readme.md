@@ -27,8 +27,8 @@
 * 支持arm服务器(比如树莓派4b)，内存要求小，64内存M也能跑起来
 
 ## 启动命令
-java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev  
-java -jar .\m3u8sync-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
+java -jar .\m3u8sync-1.0-SNAPSHOT.jar --spring.profiles.active=dev  
+java -jar .\m3u8sync-1.0-SNAPSHOT.jar --spring.profiles.active=test
 
 ## 常用接口
 ### /downup/addAsync 添加m3u8下载任务

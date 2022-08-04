@@ -12,8 +12,8 @@
 * nginx(从nginx下载文件)
 
 # 启动命令
-java -jar .\m3u8sync-security-0.0.1-SNAPSHOT.jar --spring.profiles.active=dev  
-java -jar .\m3u8sync[security-0.0.1-SNAPSHOT.jar --spring.profiles.active=test
+java -jar .\m3u8sync-security-1.0-SNAPSHOT.jar --spring.profiles.active=dev  
+java -jar .\m3u8sync[security-1.0-SNAPSHOT.jar --spring.profiles.active=test
 
 ## 运行
 http://localhost:9290/index.html  

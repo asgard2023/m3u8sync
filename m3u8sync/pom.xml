@@ -8,7 +8,7 @@
 		<version>1.0-SNAPSHOT</version>
 	</parent>
     <artifactId>m3u8sync</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>1-SNAPSHOT</version>
     <name>m3u8sync</name>
     <description>Sync m3u8 from nginx</description>
     <properties>
