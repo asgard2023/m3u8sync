@@ -2,12 +2,13 @@ package org.ccs.m3u8sync.utils;
 
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IoUtil;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.ccs.m3u8sync.exceptions.BaseException;
 import org.ccs.m3u8sync.exceptions.FailedException;
 import org.ccs.m3u8sync.vo.M3U8Row;
 import org.ccs.m3u8sync.vo.M3u8FileInfoVo;
-import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,11 +27,12 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class AvClipUtil {
-    private AvClipUtil(){
+    private AvClipUtil() {
 
     }
+
     static Logger logger = LoggerFactory.getLogger(AvClipUtil.class);
-    public static final String  M3U8_ENDPOINT =  "#EXT-X-ENDLIST";
+    public static final String M3U8_ENDPOINT = "#EXT-X-ENDLIST";
 
     /**
      * 读取url的内容
@@ -54,19 +56,33 @@ public class AvClipUtil {
 
     private static List<String> getContents(String url) {
         List<String> contents = new ArrayList<>();
+        InputStreamReader isr = null;
+        BufferedReader br = null;
         try {
-            BufferedReader br = new BufferedReader(new InputStreamReader(new URL(url).openConnection().getInputStream(), StandardCharsets.UTF_8));
+            URL urlRead = new URL(url);
+            isr = new InputStreamReader(urlRead.openConnection().getInputStream());
+            br = new BufferedReader(isr);
             String realLineStr = null;
             while ((realLineStr = br.readLine()) != null) {
                 contents.add(realLineStr);
             }
+        } catch (Exception e) {
+            logger.error("----readM3U8--url={} error={}", url, e.getMessage());
+        } finally {
             try {
-                br.close();
+                if (br != null) {
+                    br.close();
+                }
             } catch (IOException e) {
                 logger.error("----readM3U8--url={} error={}", url, e.getMessage());
             }
-        } catch (IOException e) {
-            logger.error("----readM3U8--url={} error={}", url, e.getMessage(), e);
+            try {
+                if (isr != null) {
+                    isr.close();
+                }
+            } catch (IOException e) {
+                logger.error("----readM3U8--url={} error={}", url, e.getMessage());
+            }
         }
         return contents;
     }
@@ -118,6 +134,7 @@ public class AvClipUtil {
 
     /**
      * 返回时长(s)
+     *
      * @param file
      * @return
      */
@@ -133,57 +150,56 @@ public class AvClipUtil {
             return 0L;
         }
         List<M3U8Row> m3u8Rows = toM3U8Rows(contents);
-        return getDurationTime(m3u8Rows)/1000;
+        return getDurationTime(m3u8Rows) / 1000;
     }
 
-    public static M3u8FileInfoVo getFileInfo(File file, M3u8FileInfoVo data) throws BaseException{
-        M3u8FileInfoVo fileInfoVo=new M3u8FileInfoVo();
-        String info=null;
-        String path=null;
+    public static M3u8FileInfoVo getFileInfo(File file, M3u8FileInfoVo data) throws BaseException {
+        M3u8FileInfoVo fileInfoVo = new M3u8FileInfoVo();
+        String info = null;
+        String path = null;
         try {
-            path=file.getPath();
-            info="----getFileInfo path="+path;
-            if(file.isFile()){
+            path = file.getPath();
+            info = "----getFileInfo path=" + path;
+            if (file.isFile()) {
                 fileInfoVo.setFilePath(file.getAbsolutePath());
-                file=file.getParentFile();
-                File[] files=file.listFiles();
+                file = file.getParentFile();
+                File[] files = file.listFiles();
                 //排除.tmp文件,.开头的文件
-                List<File> fileList=Arrays.stream(files).filter(f->!(f.getName().endsWith(".tmp")||f.getName().startsWith("."))).collect(Collectors.toList());
-                Integer fileCount=fileList.size();
+                List<File> fileList = Arrays.stream(files).filter(f -> !(f.getName().endsWith(".tmp") || f.getName().startsWith("."))).collect(Collectors.toList());
+                Integer fileCount = fileList.size();
                 fileInfoVo.setFileCount(fileCount);
-                if(data!=null && !StringUtils.equals("" + data.getFileCount(), "" + fileCount)){
-                    info+=",fileCount:"+fileCount+"/"+data.getFileCount();
+                if (data != null && !StringUtils.equals("" + data.getFileCount(), "" + fileCount)) {
+                    info += ",fileCount:" + fileCount + "/" + data.getFileCount();
                     logger.warn(info);
                     throw new FailedException(info);
                 }
 
-                Long length=0L;
-                for(File f: fileList){
-                    length+=FileUtils.getFileLength(f);
+                Long length = 0L;
+                for (File f : fileList) {
+                    length += FileUtils.getFileLength(f);
                 }
                 fileInfoVo.setFileLength(length);
-                if(data!=null && !StringUtils.equals("" + data.getFileLength(), "" + length)){
-                    info+=",fileLength:"+length+"/"+data.getFileLength();
+                if (data != null && !StringUtils.equals("" + data.getFileLength(), "" + length)) {
+                    info += ",fileLength:" + length + "/" + data.getFileLength();
                     logger.warn(info);
                     throw new FailedException(info);
                 }
-            }
-            else{
-                info+=" not file";
+            } else {
+                info += " not file";
                 logger.warn(info);
             }
-        } catch (BaseException e){
-          throw e;
+        } catch (BaseException e) {
+            throw e;
         } catch (Exception e) {
             logger.error("----getFileInfo path={}", path, e);
-            throw new FailedException("getFileInfo:"+e.getMessage());
+            throw new FailedException("getFileInfo:" + e.getMessage());
         }
         return fileInfoVo;
     }
 
 
     public static M3u8FileInfoVo getM3u8FileInfoAll(File file, M3u8FileInfoVo data) {
-        M3u8FileInfoVo fileInfoVo=getFileInfo(file, data);
+        M3u8FileInfoVo fileInfoVo = getFileInfo(file, data);
         List<String> contents = null;
         try {
             contents = FileUtil.readLines(file, StandardCharsets.UTF_8);
@@ -192,12 +208,12 @@ public class AvClipUtil {
             }
         } catch (Exception e) {
             logger.warn("----getDurationTime--path={}", file.getAbsolutePath(), e);
-            throw new FailedException("readLine fail:"+e.getMessage());
+            throw new FailedException("readLine fail:" + e.getMessage());
         }
         List<M3U8Row> m3u8Rows = toM3U8Rows(contents);
         fileInfoVo.setDurationTime(getDurationTime(m3u8Rows));
-        if(data!=null && !StringUtils.equals("" + data.getDurationTime(), "" + fileInfoVo.getDurationTime())){
-            String info="durationTime:"+fileInfoVo.getDurationTime()+"/"+data.getDurationTime();
+        if (data != null && !StringUtils.equals("" + data.getDurationTime(), "" + fileInfoVo.getDurationTime())) {
+            String info = "durationTime:" + fileInfoVo.getDurationTime() + "/" + data.getDurationTime();
             logger.warn("----getM3u8FileInfo {}", info);
             throw new FailedException(info);
         }
@@ -205,14 +221,14 @@ public class AvClipUtil {
     }
 
     private static long getRowsTsFileLength(List<M3U8Row> m3u8Rows, String path, File[] files) {
-        long fileLength=0L;
+        long fileLength = 0L;
         try {
-            for(M3U8Row row: m3u8Rows){
-                if(row.getContent().endsWith(".ts")) {
-                    for(int i = 0; i< files.length; i++){
-                        File f= files[i];
-                        if(f.getPath().contains(row.getContent())) {
-                            fileLength+=FileUtils.getFileLength(f);
+            for (M3U8Row row : m3u8Rows) {
+                if (row.getContent().endsWith(".ts")) {
+                    for (int i = 0; i < files.length; i++) {
+                        File f = files[i];
+                        if (f.getPath().contains(row.getContent())) {
+                            fileLength += FileUtils.getFileLength(f);
                         }
                     }
                 }
@@ -225,17 +241,16 @@ public class AvClipUtil {
 
 
     /**
-     *
      * @param m3u8Rows
      * @param endMillisec
-     * @param isStart true开头，false结束
+     * @param isStart     true开头，false结束
      * @return
      */
     private static List<String> getM3u8Content(List<M3U8Row> m3u8Rows, long endMillisec, boolean isStart) {
         List<String> resultContents = new ArrayList<>();
 
-        boolean isEnd=!isStart;
-        if(isEnd){
+        boolean isEnd = !isStart;
+        if (isEnd) {
             Collections.reverse(m3u8Rows);
         }
 
@@ -260,9 +275,9 @@ public class AvClipUtil {
 
         }
 
-        if(isEnd){
-            if(isBreak) {
-                if(count< m3u8Rows.size()){
+        if (isEnd) {
+            if (isBreak) {
+                if (count < m3u8Rows.size()) {
                     //多补一行，把#EXTINF也加进来
                     resultContents.add(m3u8Rows.get(count).getContent());
                 }
@@ -275,8 +290,8 @@ public class AvClipUtil {
             }
             Collections.reverse(resultContents);
         }
-        String lastLine=resultContents.get(resultContents.size()-1);
-        if(!M3U8_ENDPOINT.equals(lastLine)) {
+        String lastLine = resultContents.get(resultContents.size() - 1);
+        if (!M3U8_ENDPOINT.equals(lastLine)) {
             resultContents.add(M3U8_ENDPOINT);
         }
         return resultContents;

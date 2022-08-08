@@ -1,6 +1,7 @@
 package org.ccs.m3u8sync.utils;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.io.LineHandler;
 import org.ccs.m3u8sync.exceptions.FileNormalException;
 import org.slf4j.Logger;
@@ -27,16 +28,17 @@ public class FileUtils {
                 fis = new FileInputStream(file);
                 fileChannel = fis.getChannel();
                 length = fileChannel.size();
-                fis.close();
-                fileChannel.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                logger.warn("----getFileLength--error={}", e.getMessage());
+                length = 0L;
             } finally {
-                if (fis != null) {
-                    fis.close();
-                }
-                if (fileChannel != null) {
-                    fileChannel.close();
+                try {
+                    IoUtil.close(fileChannel);
+                    if (fis != null) {
+                        fis.close();
+                    }
+                } catch (IOException e) {
+                    logger.warn("----getFileLength--error={}", e.getMessage());
                 }
             }
         }
@@ -60,7 +62,7 @@ public class FileUtils {
             }
             m3u8PathFile = new RandomAccessFile(file, "r");
         } catch (FileNotFoundException e) {
-            e.printStackTrace();
+            logger.warn("----getFirstTs--m3u8Path={} not found", m3u8Path);
             return null;
         }
         try {
@@ -75,6 +77,14 @@ public class FileUtils {
             return null;
         } catch (FileNormalException e) {
             return e.getMessage();
+        } finally {
+            if (m3u8PathFile != null) {
+                try {
+                    m3u8PathFile.close();
+                } catch (IOException e) {
+                    logger.warn("----getFirstTs--m3u8Path={} close error={}", m3u8Path, e.getMessage());
+                }
+            }
         }
     }
 }
