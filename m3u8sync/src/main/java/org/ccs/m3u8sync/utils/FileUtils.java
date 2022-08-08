@@ -1,7 +1,6 @@
 package org.ccs.m3u8sync.utils;
 
 import cn.hutool.core.io.FileUtil;
-import cn.hutool.core.io.IoUtil;
 import cn.hutool.core.io.LineHandler;
 import org.ccs.m3u8sync.exceptions.FileNormalException;
 import org.slf4j.Logger;
@@ -20,29 +19,16 @@ public class FileUtils {
 
 
     public static Long getFileLength(File file) throws Exception {
-        FileInputStream fis = null;
-        FileChannel fileChannel = null;
         Long length = 0L;
         if (file.exists() && file.isFile()) {
-            try {
-                fis = new FileInputStream(file);
-                fileChannel = fis.getChannel();
+            try (FileInputStream fis = new FileInputStream(file);
+                 FileChannel fileChannel = fis.getChannel();) {
                 length = fileChannel.size();
             } catch (IOException e) {
                 logger.warn("----getFileLength--error={}", e.getMessage());
                 length = 0L;
-            } finally {
-                try {
-                    IoUtil.close(fileChannel);
-                    if (fis != null) {
-                        fis.close();
-                    }
-                } catch (IOException e) {
-                    logger.warn("----getFileLength--error={}", e.getMessage());
-                }
             }
         }
-
         return length;
     }
 
